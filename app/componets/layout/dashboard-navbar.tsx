@@ -1,35 +1,39 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { 
-  Menu, 
-  Search, 
-  X, 
-  Sun, 
-  Moon, 
-  Bell, 
-  LogOut, 
-  User, 
+import {
+  Menu,
+  Search,
+  X,
+  Bell,
+  LogOut,
+  User,
   Settings,
-  Sparkles,
-  Command
+  Command,
+  LayoutDashboard,
+  FolderKanban,
+  BarChart3,
+  Layers,
 } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import Image from "next/image";
 
 interface DashboardNavbarProps {
-  onOpenSidebar: () => void;
+  onOpenMobileMenu?: () => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
 }
 
 export default function DashboardNavbar({
-  onOpenSidebar,
+  onOpenMobileMenu,
   searchQuery,
   onSearchChange,
 }: DashboardNavbarProps) {
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const pathname = usePathname();
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [userInfo, setUserInfo] = useState({
     name: "Admin User",
     email: "admin@surveyteknologi.id",
@@ -38,20 +42,7 @@ export default function DashboardNavbar({
   });
 
   useEffect(() => {
-    // Theme sync
-    const savedTheme = localStorage.getItem("theme");
-    const isLight =
-      savedTheme === "light" ||
-      document.documentElement.classList.contains("light");
-    if (isLight) {
-      setTheme("light");
-      document.documentElement.classList.add("light");
-    } else {
-      setTheme("dark");
-      document.documentElement.classList.remove("light");
-    }
-
-    // User info sync
+    // User info sync from localStorage
     const email = localStorage.getItem("userEmail");
     const level = localStorage.getItem("userLevel");
     const name = localStorage.getItem("userName");
@@ -73,20 +64,6 @@ export default function DashboardNavbar({
     }
   }, []);
 
-  const toggleTheme = () => {
-    setTheme((prevTheme) => {
-      const newTheme = prevTheme === "dark" ? "light" : "dark";
-      if (newTheme === "light") {
-        document.documentElement.classList.add("light");
-        localStorage.setItem("theme", "light");
-      } else {
-        document.documentElement.classList.remove("light");
-        localStorage.setItem("theme", "dark");
-      }
-      return newTheme;
-    });
-  };
-
   const handleLogout = () => {
     localStorage.removeItem("userEmail");
     localStorage.removeItem("userLevel");
@@ -95,53 +72,104 @@ export default function DashboardNavbar({
     window.location.href = "/login";
   };
 
+  // Menu navigasi utama pengganti sidebar
+  const navLinks = [
+    { name: "Overview", href: "/dashboard", icon: LayoutDashboard }, 
+    { name: "Projects", href: "/dashboard/projects", icon: FolderKanban },
+    // { name: "Stage Gates", href: "/dashboard/gates", icon: Layers },
+    // { name: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
+  ];
+
   return (
-    <header className="sticky top-0 z-30 flex h-20 w-full items-center justify-between border-b border-white/10 light:border-slate-200 bg-white px-4 sm:px-6 backdrop-blur-md transition-all duration-300">
-      {/* Left side: Mobile Sidebar Toggle & Search Bar */}
-      <div className="flex items-center gap-3 sm:gap-4 flex-1 max-w-2xl">
+    <header className="sticky top-0 z-40 flex h-20 w-full items-center justify-between border-b border-slate-200 bg-white px-4 sm:px-8 shadow-sm backdrop-blur-md transition-all">
+      {/* LEFT SECTION: Brand Logo & Main Navigation Links */}
+      <div className="flex items-center gap-6 lg:gap-10">
         {/* Mobile Hamburger Button */}
         <button
           type="button"
-          onClick={onOpenSidebar}
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           aria-label="Buka menu navigasi"
-          className="inline-flex md:hidden items-center justify-center rounded-xl p-2.5 text-gray-400 light:text-slate-600 hover:bg-white/5 light:hover:bg-slate-100 hover:text-white light:hover:text-slate-900 border border-white/10 light:border-slate-200 transition-colors focus:outline-none"
+          className="inline-flex lg:hidden items-center justify-center rounded-xl p-2 text-slate-600 hover:bg-slate-100 border border-slate-200 transition-colors focus:outline-none"
         >
-          <Menu className="h-5 w-5" />
+          {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
 
+        {/* Brand Logo & Title */}
+        <Link href="/dashboard" className="flex items-center gap-3 group">
+          <div className="relative overflow-hidden rounded-xl border border-slate-200 p-1 bg-slate-50 shadow-sm">
+            <Image
+              src="/assets/images/logo.jpeg"
+              width={36}
+              height={36}
+              alt="Logo STI"
+              className="rounded-lg object-cover  transition-all"
+              unoptimized
+            />
+          </div>
+          <div className="hidden sm:flex flex-col">
+            <span className="text-xs font-black tracking-wider text-slate-900 uppercase leading-none">
+              SURVEY TEKNOLOGI
+            </span>
+            <span className="text-[10px] font-bold text-zinc-500 tracking-widest uppercase mt-0.5">
+              INDONESIA
+            </span>
+          </div>
+        </Link>
+
+        {/* Desktop Navigation Links (Pengganti Sidebar) */}
+        <nav className="hidden lg:flex items-center gap-1.5">
+          {navLinks.map((item) => {
+            const Icon = item.icon;
+            const isActive = pathname === item.href;
+
+            return (
+              <Link
+                key={item.name}
+                href={item.href}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-200 ${
+                  isActive
+                    ? "bg-zinc-900 text-white shadow-sm"
+                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                }`}
+              >
+                <Icon className={`w-4 h-4 ${isActive ? "text-zinc-300" : "text-slate-400"}`} />
+                <span>{item.name}</span>
+              </Link>
+            );
+          })}
+        </nav>
+      </div>
+
+      {/* RIGHT SECTION: Search Bar, Notifications, & Profile */}
+      <div className="flex items-center gap-3">
         {/* Search Bar */}
-        <div className="relative w-full max-w-md">
-          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-gray-400 light:text-slate-400">
-            <Search className="h-4 w-4" />
+        <div className="relative hidden md:block w-64 xl:w-80">
+          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+            <Search className="h-3.5 w-3.5" />
           </div>
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Cari proyek, satelit, invoice, atau laporan..."
-            className="w-full rounded-xl border border-white/10 light:border-slate-200 bg-white/5 light:bg-slate-50 py-2 pl-10 pr-10 text-xs sm:text-sm text-white light:text-slate-900 placeholder:text-gray-400 light:placeholder:text-slate-400 focus:border-brand-cyan/60 focus:bg-white/10 light:focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-cyan/20 transition-all duration-200"
+            placeholder="Cari proyek atau dokumen..."
+            className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-9 pr-8 text-xs text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400/20 transition-all"
           />
           {searchQuery ? (
             <button
               type="button"
               onClick={() => onSearchChange("")}
-              className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-white light:hover:text-slate-900"
+              className="absolute inset-y-0 right-0 flex items-center pr-2.5 text-slate-400 hover:text-slate-900"
             >
-              <X className="h-4 w-4" />
+              <X className="h-3.5 w-3.5" />
             </button>
           ) : (
-            <div className="hidden sm:flex pointer-events-none absolute inset-y-0 right-0 items-center pr-3">
-              <kbd className="inline-flex items-center gap-0.5 rounded border border-white/15 light:border-slate-200 bg-white/5 light:bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-400 light:text-slate-500">
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2.5">
+              <kbd className="inline-flex items-center gap-0.5 rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-slate-400">
                 <Command className="h-2.5 w-2.5" /> K
               </kbd>
             </div>
           )}
         </div>
-      </div>
-
-      {/* Right side: Actions, Theme Toggle, Notifications, Profile */}
-      <div className="flex items-center gap-2 sm:gap-3">
-        {/* Theme Toggle Button */}
 
         {/* Notifications Button */}
         <div className="relative">
@@ -152,47 +180,47 @@ export default function DashboardNavbar({
               setIsProfileOpen(false);
             }}
             aria-label="Notifikasi"
-            className="relative rounded-xl border border-white/10 light:border-slate-200 bg-white/5 light:bg-slate-100 p-2.5 text-gray-400 light:text-slate-600 hover:text-white light:hover:text-slate-900 hover:bg-white/10 light:hover:bg-slate-200/70 transition-all duration-200 focus:outline-none cursor-pointer"
+            className="relative rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-all focus:outline-none cursor-pointer"
           >
             <Bell className="h-4 w-4" />
             <span className="absolute top-2 right-2 flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-cyan opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-brand-cyan" />
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-zinc-500 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-zinc-800" />
             </span>
           </button>
 
           {/* Notifications Dropdown */}
           {isNotificationsOpen && (
-            <div className="absolute right-0 mt-3 w-80 rounded-2xl border border-white/10 light:border-slate-200 bg-zinc-950/95 light:bg-white shadow-2xl backdrop-blur-xl p-4 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
-              <div className="flex items-center justify-between pb-3 border-b border-white/10 light:border-slate-100">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-white light:text-slate-900">
+            <div className="absolute right-0 mt-3 w-80 rounded-2xl border border-slate-200 bg-white shadow-xl p-4 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900">
                   Notifikasi Sistem
                 </h4>
-                <span className="text-[10px] font-semibold bg-brand-cyan/15 text-brand-cyan px-2 py-0.5 rounded-full">
+                <span className="text-[10px] font-semibold bg-zinc-100 text-zinc-800 px-2 py-0.5 rounded-full">
                   3 Baru
                 </span>
               </div>
               <div className="mt-3 space-y-2 text-xs">
-                <div className="p-2.5 rounded-xl bg-white/5 light:bg-slate-50 border border-white/5 light:border-slate-100 hover:border-brand-cyan/30 transition-colors">
+                <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 hover:border-zinc-300 transition-colors">
                   <div className="flex items-center justify-between">
-                    <p className="font-semibold text-white light:text-slate-900">Tasking Satelit Sukses</p>
-                    <span className="text-[10px] text-gray-400">5m lalu</span>
+                    <p className="font-semibold text-slate-900">Flight Plan Disetujui</p>
+                    <span className="text-[10px] text-slate-400">5m lalu</span>
                   </div>
-                  <p className="text-gray-400 light:text-slate-500 text-[11px] mt-0.5">Citra resolusi tinggi 1.5m area IKN telah diproses.</p>
+                  <p className="text-slate-500 text-[11px] mt-0.5">Gate 1 Proyek IKN telah disetujui oleh Verifikator.</p>
                 </div>
-                <div className="p-2.5 rounded-xl bg-white/5 light:bg-slate-50 border border-white/5 light:border-slate-100 hover:border-brand-cyan/30 transition-colors">
+                <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 hover:border-zinc-300 transition-colors">
                   <div className="flex items-center justify-between">
-                    <p className="font-semibold text-white light:text-slate-900">Invoice Terbayar</p>
-                    <span className="text-[10px] text-gray-400">1j lalu</span>
+                    <p className="font-semibold text-slate-900">Upload Data Baru</p>
+                    <span className="text-[10px] text-slate-400">1j lalu</span>
                   </div>
-                  <p className="text-gray-400 light:text-slate-500 text-[11px] mt-0.5">Pembayaran invoice INV-2026-08 telah diterima.</p>
+                  <p className="text-slate-500 text-[11px] mt-0.5">Oliver mengunggah data mentah area Sawit.</p>
                 </div>
               </div>
             </div>
           )}
         </div>
 
-        {/* User Profile & Quick Menu */}
+        {/* User Profile & Dropdown */}
         <div className="relative">
           <button
             type="button"
@@ -200,16 +228,16 @@ export default function DashboardNavbar({
               setIsProfileOpen(!isProfileOpen);
               setIsNotificationsOpen(false);
             }}
-            className="flex items-center gap-2.5 rounded-xl border border-white/10 light:border-slate-200 bg-white/5 light:bg-slate-100 p-1.5 sm:px-3 sm:py-1.5 hover:bg-white/10 light:hover:bg-slate-200/60 transition-all duration-200 cursor-pointer"
+            className="flex items-center gap-2.5 rounded-xl border border-slate-200 bg-slate-50 p-1.5 sm:px-3 sm:py-1.5 hover:bg-slate-100 transition-all cursor-pointer"
           >
-            <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg bg-gradient-to-tr from-zinc-700 to-zinc-400 flex items-center justify-center text-white font-bold text-xs shadow-sm flex-shrink-0">
+            <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg bg-zinc-900 flex items-center justify-center text-white font-bold text-xs shadow-sm flex-shrink-0">
               {userInfo.initials}
             </div>
             <div className="hidden sm:flex flex-col text-left">
-              <span className="text-xs font-bold text-white light:text-slate-900 leading-tight">
+              <span className="text-xs font-bold text-slate-900 leading-tight">
                 {userInfo.name}
               </span>
-              <span className="text-[10px] font-medium text-brand-cyan leading-tight">
+              <span className="text-[10px] font-semibold text-zinc-500 uppercase leading-tight">
                 {userInfo.role}
               </span>
             </div>
@@ -217,12 +245,12 @@ export default function DashboardNavbar({
 
           {/* Profile Dropdown */}
           {isProfileOpen && (
-            <div className="absolute right-0 mt-3 w-56 rounded-2xl border border-white/10 light:border-slate-200 bg-zinc-950/95 light:bg-white shadow-2xl backdrop-blur-xl p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
-              <div className="px-3 py-2.5 border-b border-white/10 light:border-slate-100">
-                <p className="text-xs font-bold text-white light:text-slate-900 truncate">
+            <div className="absolute right-0 mt-3 w-56 rounded-2xl border border-slate-200 bg-white shadow-xl p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="px-3 py-2.5 border-b border-slate-100">
+                <p className="text-xs font-bold text-slate-900 truncate">
                   {userInfo.name}
                 </p>
-                <p className="text-[11px] text-gray-400 light:text-slate-500 truncate">
+                <p className="text-[11px] text-slate-500 truncate">
                   {userInfo.email}
                 </p>
               </div>
@@ -230,23 +258,23 @@ export default function DashboardNavbar({
                 <Link
                   href="/dashboard/profile"
                   onClick={() => setIsProfileOpen(false)}
-                  className="flex items-center gap-2.5 px-3 py-2 text-xs rounded-xl text-gray-300 light:text-slate-700 hover:bg-white/5 light:hover:bg-slate-100 hover:text-white light:hover:text-slate-950 transition-colors"
+                  className="flex items-center gap-2.5 px-3 py-2 text-xs rounded-xl text-slate-700 hover:bg-slate-100 hover:text-slate-950 transition-colors"
                 >
-                  <User className="h-3.5 w-3.5 text-brand-cyan" />
+                  <User className="h-3.5 w-3.5 text-zinc-600" />
                   <span>Profil Saya</span>
                 </Link>
                 <Link
                   href="/dashboard/settings"
                   onClick={() => setIsProfileOpen(false)}
-                  className="flex items-center gap-2.5 px-3 py-2 text-xs rounded-xl text-gray-300 light:text-slate-700 hover:bg-white/5 light:hover:bg-slate-100 hover:text-white light:hover:text-slate-950 transition-colors"
+                  className="flex items-center gap-2.5 px-3 py-2 text-xs rounded-xl text-slate-700 hover:bg-slate-100 hover:text-slate-950 transition-colors"
                 >
-                  <Settings className="h-3.5 w-3.5 text-brand-cyan" />
+                  <Settings className="h-3.5 w-3.5 text-zinc-600" />
                   <span>Pengaturan</span>
                 </Link>
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="flex w-full items-center gap-2.5 px-3 py-2 text-xs rounded-xl text-rose-400 hover:bg-rose-400/10 transition-colors cursor-pointer"
+                  className="flex w-full items-center gap-2.5 px-3 py-2 text-xs rounded-xl text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
                 >
                   <LogOut className="h-3.5 w-3.5" />
                   <span>Keluar / Logout</span>
@@ -256,6 +284,48 @@ export default function DashboardNavbar({
           )}
         </div>
       </div>
+
+      {/* MOBILE DROPDOWN MENU (Muncul saat tombol hamburger diklik di layar kecil) */}
+      {isMobileMenuOpen && (
+        <div className="absolute top-20 left-0 w-full bg-white border-b border-slate-200 shadow-xl p-4 lg:hidden z-50 animate-in slide-in-from-top-2 duration-200">
+          <div className="space-y-1 mb-4 pb-4 border-b border-slate-100">
+            {navLinks.map((item) => {
+              const Icon = item.icon;
+              const isActive = pathname === item.href;
+
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                    isActive
+                      ? "bg-zinc-900 text-white"
+                      : "text-slate-700 hover:bg-slate-100"
+                  }`}
+                >
+                  <Icon className={`w-4 h-4 ${isActive ? "text-zinc-300" : "text-slate-400"}`} />
+                  <span>{item.name}</span>
+                </Link>
+              );
+            })}
+          </div>
+
+          {/* Search bar khusus mobile */}
+          <div className="relative w-full">
+            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+              <Search className="h-3.5 w-3.5" />
+            </div>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => onSearchChange(e.target.value)}
+              placeholder="Cari proyek..."
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-9 pr-4 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none"
+            />
+          </div>
+        </div>
+      )}
     </header>
   );
 }

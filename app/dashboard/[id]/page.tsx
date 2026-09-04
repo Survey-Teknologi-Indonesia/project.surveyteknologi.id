@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import {
   FileText,
@@ -15,7 +15,13 @@ import {
   User,
   Calendar,
   ChevronRight,
+  Upload,
+  Check,
+  X,
+  ShieldCheck,
+  UploadCloud,
 } from "lucide-react";
+import { getCurrentUser } from "@/app/login/actions"; // Sesuaikan path actions Anda
 
 export interface TimelineStep {
   gateNumber: number;
@@ -26,7 +32,7 @@ export interface TimelineStep {
   icon: React.ElementType;
   uploadedBy?: string;
   date?: string;
-  status: "APPROVED" | "PENDING" | "IN_PROGRESS" | "REVISION" | "LOCKED";
+  status: "PENDING_UPLOAD" | "APPROVED" | "PENDING_APPROVAL" | "IN_PROGRESS" | "REVISION" | "LOCKED";
   output: string;
 }
 
@@ -41,12 +47,12 @@ const SOP_PIPELINE_STEPS: TimelineStep[] = [
     icon: FileText,
     uploadedBy: "Oliver",
     date: "20 Jan 2026",
-    status: "APPROVED",
+    status: "PENDING_UPLOAD",
     output: "KML File & GCP Coordinates (.csv)",
   },
   {
     gateNumber: 2,
-    href: "akuisisi-data",
+    href: "data-acquisition",
     title: "Data Acquisition",
     subtitle: "Aerial Photography & Flight Log",
     description:
@@ -54,7 +60,7 @@ const SOP_PIPELINE_STEPS: TimelineStep[] = [
     icon: Camera,
     uploadedBy: "Oliver",
     date: "22 Jan 2026",
-    status: "APPROVED",
+    status: "LOCKED",
     output: "Flight Log & Raw Capture Data",
   },
   {
@@ -67,7 +73,7 @@ const SOP_PIPELINE_STEPS: TimelineStep[] = [
     icon: FolderArchive,
     uploadedBy: "Oliver",
     date: "23 Jan 2026",
-    status: "APPROVED",
+    status: "LOCKED",
     output: "Raw Photos (GDrive Link)",
   },
   {
@@ -80,7 +86,7 @@ const SOP_PIPELINE_STEPS: TimelineStep[] = [
     icon: Sparkles,
     uploadedBy: "Clara",
     date: "25 Jan 2026",
-    status: "APPROVED",
+    status: "LOCKED",
     output: "Enhanced Photos (GDrive Link)",
   },
   {
@@ -91,9 +97,9 @@ const SOP_PIPELINE_STEPS: TimelineStep[] = [
     description:
       "Photo alignment, 3D point cloud generation, mesh, elevation (DEM), and Orthomosaic creation.",
     icon: Map,
-    uploadedBy: "Clara",
-    date: "28 Jan 2026",
-    status: "PENDING",
+    uploadedBy: "-",
+    date: "-",
+    status: "LOCKED",
     output: "GeoTIFF Orthomosaic & DEM",
   },
   {
@@ -101,8 +107,7 @@ const SOP_PIPELINE_STEPS: TimelineStep[] = [
     title: "Orthophoto Enhancement",
     href: "orthophoto-enhance",
     subtitle: "Seamless Blending & Visual Refinement",
-    description:
-      "Artifact removal, color matching, and seamline smoothing.",
+    description: "Artifact removal, color matching, and seamline smoothing.",
     icon: Layers,
     uploadedBy: "-",
     date: "-",
@@ -124,9 +129,16 @@ const SOP_PIPELINE_STEPS: TimelineStep[] = [
   },
 ];
 
-// Status Meta Configuration Helper
 const getStatusMeta = (status: TimelineStep["status"]) => {
   switch (status) {
+    case "PENDING_UPLOAD":
+      return {
+        label: "Pending Upload",
+        badge: "bg-sky-50 text-sky-700 border-sky-200",
+        dot: "bg-sky-500",
+        nodeBg: "bg-sky-50 text-sky-600 border-sky-400",
+        line: "bg-sky-200",
+      };
     case "APPROVED":
       return {
         label: "Approved",
@@ -135,7 +147,7 @@ const getStatusMeta = (status: TimelineStep["status"]) => {
         nodeBg: "bg-emerald-50 text-emerald-600 border-emerald-400",
         line: "bg-emerald-400",
       };
-    case "PENDING":
+    case "PENDING_APPROVAL":
       return {
         label: "Pending Review",
         badge: "bg-amber-50 text-amber-700 border-amber-200 animate-pulse",
@@ -174,22 +186,86 @@ const getStatusMeta = (status: TimelineStep["status"]) => {
 export default function SOPTimelineCard() {
   const router = useRouter();
   const params = useParams();
-  const id = params?.id || "PRJ-001";
+  
+  const rawId = params?.id;
+  const id = rawId ? (Array.isArray(rawId) ? rawId[0] : rawId) : "PRJ-001";
+
+  const [isMounted, setIsMounted] = useState(false);
+  const [currentUser, setCurrentUser] = useState<{
+    name: string;
+    role: "uploader" | "verifier";
+  } | null>(null);
+
+  // State untuk Modal Upload
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [selectedStep, setSelectedStep] = useState<TimelineStep | null>(null);
+  const [fileLink, setFileLink] = useState("");
+  const [notes, setNotes] = useState("");
+
+  useEffect(() => {
+    setIsMounted(true);
+
+    async function fetchUserSession() {
+      try {
+        const user = await getCurrentUser();
+        if (user) {
+          setCurrentUser({
+            name: user.name || "User",
+            role: user.role === "verifier" ? "verifier" : "uploader",
+          });
+        }
+      } catch (error) {
+        setCurrentUser({ name: "Oliver", role: "uploader" }); // Default fallback untuk testing
+      }
+    }
+    fetchUserSession();
+  }, []);
+
+  const isVerifier = currentUser?.role === "verifier";
+
+  const handleOpenUploadModal = (step: TimelineStep) => {
+    setSelectedStep(step);
+    setIsUploadModalOpen(true);
+  };
+
+  const handleUploadSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Tambahkan logic API upload Anda di sini
+    alert(`Berhasil mengirim data untuk ${selectedStep?.title}!`);
+    setIsUploadModalOpen(false);
+    setFileLink("");
+    setNotes("");
+  };
+
+  if (!isMounted) {
+    return <div className="p-8 text-center text-slate-400 font-bold">Loading Workspace...</div>;
+  }
 
   return (
-    <div className="flex flex-col gap-6 font-sans text-slate-800">
+    <div className="space-y-6 max-w-7xl mx-auto p-2 sm:p-4 font-sans text-slate-800">
       {/* 1. Timeline Progress Visualization */}
       <div className="w-full bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6">
-        <div className="mb-6 border-b border-slate-200 pb-4">
-          <h2 className="text-lg font-bold text-slate-900 tracking-tight">
-            Timeline Progress
-          </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Stage-Gate Workflow Visualization for Photogrammetry & Detection
-          </p>
+        <div className="mb-6 border-b border-slate-200 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-bold text-slate-900 tracking-tight">
+              Timeline Progress
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Stage-Gate Workflow Visualization for Photogrammetry & Detection
+            </p>
+          </div>
+
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200 text-xs text-slate-700">
+            <ShieldCheck className="w-4 h-4 text-[#004b87]" />
+            <span>
+              Role:{" "}
+              <strong className="text-[#004b87] uppercase">
+                {currentUser?.role || "Loading..."}
+              </strong>
+            </span>
+          </div>
         </div>
 
-        {/* Horizontal Timeline Container */}
         <div className="overflow-x-auto pb-4 pt-2">
           <div className="flex min-w-[850px] justify-between items-start">
             {SOP_PIPELINE_STEPS.map((step, idx, arr) => {
@@ -208,14 +284,12 @@ export default function SOPTimelineCard() {
                     step.status !== "LOCKED" ? "cursor-pointer" : "cursor-not-allowed"
                   }`}
                 >
-                  {/* Line Connector */}
                   {!isLast && (
                     <div
                       className={`absolute top-5 left-1/2 w-full h-[2px] transition-colors duration-300 ${meta.line}`}
                     />
                   )}
 
-                  {/* Node Icon Circle */}
                   <div
                     className={`relative z-10 w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all duration-200 shadow-sm bg-white ${meta.nodeBg} group-hover:scale-105`}
                   >
@@ -233,7 +307,6 @@ export default function SOPTimelineCard() {
                     )}
                   </div>
 
-                  {/* Step Labels */}
                   <div className="mt-3 text-center px-1 flex flex-col items-center">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">
                       Gate {step.gateNumber}
@@ -273,7 +346,6 @@ export default function SOPTimelineCard() {
           </p>
         </div>
 
-        {/* Table Container */}
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -283,7 +355,7 @@ export default function SOPTimelineCard() {
                 <th className="py-3.5 px-4 sm:px-6">Uploader</th>
                 <th className="py-3.5 px-4 sm:px-6 text-center">Submission Date</th>
                 <th className="py-3.5 px-4 sm:px-6 text-center">Status</th>
-                <th className="py-3.5 px-4 sm:px-6 text-center w-32">Action</th>
+                <th className="py-3.5 px-4 sm:px-6 text-center w-44">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-sm">
@@ -295,12 +367,10 @@ export default function SOPTimelineCard() {
                     key={step.gateNumber}
                     className="hover:bg-slate-50/80 transition-colors group"
                   >
-                    {/* Index */}
                     <td className="py-3.5 px-4 sm:px-6 text-center text-xs font-mono text-slate-400">
                       {String(step.gateNumber).padStart(2, "0")}
                     </td>
 
-                    {/* Gate Title */}
                     <td className="py-3.5 px-4 sm:px-6">
                       <div className="flex flex-col">
                         <span className="font-bold text-slate-900 group-hover:text-[#004b87] transition-colors">
@@ -312,9 +382,8 @@ export default function SOPTimelineCard() {
                       </div>
                     </td>
 
-                    {/* Uploader */}
                     <td className="py-3.5 px-4 sm:px-6">
-                      {step.uploadedBy && step.uploadedBy !== "-" ? (
+                      {step.uploadedBy && step.status !== "PENDING_UPLOAD" && step.status !== "LOCKED" ? (
                         <div className="inline-flex items-center gap-1.5 text-xs text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
                           <User className="w-3.5 h-3.5 text-slate-400" />
                           <span>{step.uploadedBy}</span>
@@ -324,9 +393,8 @@ export default function SOPTimelineCard() {
                       )}
                     </td>
 
-                    {/* Date */}
                     <td className="py-3.5 px-4 sm:px-6 text-center">
-                      {step.date && step.date !== "-" ? (
+                      {step.date && step.status !== "PENDING_UPLOAD" && step.status !== "LOCKED" ? (
                         <div className="inline-flex items-center gap-1.5 text-xs text-slate-600">
                           <Calendar className="w-3.5 h-3.5 text-slate-400" />
                           <span>{step.date}</span>
@@ -336,7 +404,6 @@ export default function SOPTimelineCard() {
                       )}
                     </td>
 
-                    {/* Status Badge */}
                     <td className="py-3.5 px-4 sm:px-6 text-center">
                       <span
                         className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${meta.badge}`}
@@ -346,25 +413,75 @@ export default function SOPTimelineCard() {
                       </span>
                     </td>
 
-                    {/* Action Button */}
                     <td className="py-3.5 px-4 sm:px-6 text-center">
-                      {step.status !== "LOCKED" ? (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            router.push(`/dashboard/${id}/${step.href}`)
-                          }
-                          className="inline-flex items-center justify-center gap-1 px-3 py-1.5 text-xs font-bold text-[#004b87] bg-[#004b87]/10 hover:bg-[#004b87] hover:text-white border border-[#004b87]/20 rounded-lg transition-all"
-                        >
-                          Details
-                          <ChevronRight className="w-3.5 h-3.5" />
-                        </button>
-                      ) : (
+                      {/* LOCKED */}
+                      {step.status === "LOCKED" && (
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs text-slate-400 bg-slate-100 border border-slate-200 rounded-lg">
                           <Lock className="w-3 h-3" />
                           Locked
                         </span>
                       )}
+
+                      {/* VERIFIER ON PENDING */}
+                      {isVerifier && step.status === "PENDING_UPLOAD" && (
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => router.push(`/dashboard/${id}/${step.href}`)}
+                            className="p-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-colors shadow-sm"
+                            title="Approve Stage"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => router.push(`/dashboard/${id}/${step.href}`)}
+                            className="p-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg transition-colors shadow-sm"
+                            title="Reject / Request Revision"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => router.push(`/dashboard/${id}/${step.href}`)}
+                            className="px-2.5 py-1.5 text-xs font-bold text-[#004b87] bg-[#004b87]/10 hover:bg-[#004b87] hover:text-white border border-[#004b87]/20 rounded-lg transition-all"
+                          >
+                            Review
+                          </button>
+                        </div>
+                      )}
+
+                      {/* UPLOADER PADA STEP YANG BELUM DI-APPROVE / BELUM UPLOAD (IN_PROGRESS / REVISION) */}
+                      {!isVerifier &&
+                        (step.status === "IN_PROGRESS" ||
+                          step.status === "REVISION" ||
+                          step.status === "PENDING_UPLOAD") && (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenUploadModal(step)}
+                            className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-[#004b87] hover:bg-[#003763] rounded-lg shadow-sm transition-all"
+                          >
+                            <Upload className="w-3.5 h-3.5" />
+                            Upload
+                          </button>
+                        )}
+
+                      {/* STANDARD DETAILS VIEW */}
+                      {((isVerifier && step.status !== "PENDING_UPLOAD") ||
+                        (!isVerifier &&
+                          step.status !== "IN_PROGRESS" &&
+                          step.status !== "REVISION" &&
+                          step.status !== "PENDING_UPLOAD")) &&
+                        step.status !== "LOCKED" && (
+                          <button
+                            type="button"
+                            onClick={() => router.push(`/dashboard/${id}/${step.href}`)}
+                            className="inline-flex items-center justify-center gap-1 px-3 py-1.5 text-xs font-bold text-[#004b87] bg-[#004b87]/10 hover:bg-[#004b87] hover:text-white border border-[#004b87]/20 rounded-lg transition-all"
+                          >
+                            Details
+                            <ChevronRight className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                     </td>
                   </tr>
                 );
@@ -373,6 +490,91 @@ export default function SOPTimelineCard() {
           </table>
         </div>
       </div>
+
+      {/* 3. MODAL FORM UPLOAD */}
+      {isUploadModalOpen && selectedStep && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-fadeIn">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xl w-full max-w-lg overflow-hidden flex flex-col">
+            {/* Modal Header */}
+            <div className="p-5 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-bold text-[#004b87] uppercase tracking-wider">
+                  Gate {selectedStep.gateNumber} Uploader
+                </span>
+                <h3 className="text-base font-bold text-slate-900">
+                  Upload Deliverable: {selectedStep.title}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsUploadModalOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body / Form */}
+            <form onSubmit={handleUploadSubmit} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                  Expected Output Format
+                </label>
+                <p className="text-xs text-slate-500 bg-slate-50 p-2.5 rounded-lg border border-slate-200 font-mono">
+                  {selectedStep.output}
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                  File Link (Google Drive / Cloud Storage)
+                </label>
+                <div className="relative flex items-center">
+                  <UploadCloud className="absolute left-3 w-4 h-4 text-slate-400" />
+                  <input
+                    type="url"
+                    required
+                    placeholder="https://drive.google.com/..."
+                    value={fileLink}
+                    onChange={(e) => setFileLink(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:border-[#004b87]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                  Catatan / Keterangan Tambahan (Opsional)
+                </label>
+                <textarea
+                  rows={3}
+                  placeholder="Tuliskan keterangan tambahan untuk verifikator..."
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  className="w-full p-3 text-xs border border-slate-200 rounded-xl focus:outline-none focus:border-[#004b87]"
+                />
+              </div>
+
+              {/* Modal Footer Actions */}
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsUploadModalOpen(false)}
+                  className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 text-xs font-bold text-white bg-[#004b87] hover:bg-[#003763] rounded-xl shadow-md transition-all"
+                >
+                  Kirim untuk Review
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
