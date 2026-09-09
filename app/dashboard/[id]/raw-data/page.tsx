@@ -1,6 +1,7 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect, use } from "react";
+import Link from "next/link";
 import {
   FolderArchive,
   FileCheck,
@@ -9,245 +10,403 @@ import {
   ExternalLink,
   ChevronLeft,
   HardDrive,
-  MapPin,
-  FileCode,
   Image as ImageIcon,
   Database,
+  CloudOff,
+  Loader2,
 } from "lucide-react";
-import Link from "next/link";
-import { useParams } from "next/navigation";
 
+import { getRawDataPageData, approveRawDataGate } from "./actions";
+import DriveFileBrowser, { ExtBadge } from "./DriveFileBrowser";
 
-export default function RawDataPage() {
-  // Mock Data untuk Gate 3: Raw Data
-  const rawDataDetails = {
-    projectCode: "STI-IKN-2026",
-    projectName: "Pemetaan Topografi & LiDAR Kawasan Inti IKN",
-    gateNumber: 3,
-    gateTitle: "Raw Data (Collection & Technical Verification)",
-    status: "APPROVED", // APPROVED | PENDING | REVISION | LOCKED
-    verifiedBy: "Oliver",
-    verificationDate: "23 Jan 2026",
-    totalStorageGB: "42.8 GB",
-    totalPhotos: 1440,
-    driveLink: "https://drive.google.com/drive/folders/sti-raw-data-ikn-2026",
-    fileBreakdown: [
-      {
-        category: "Aerial Imagery (EXIF Photo)",
-        count: "1,440 Files (.JPG / .DNG)",
-        size: "34.2 GB",
-        status: "VALID",
-        notes: "EXIF geotag & Timestamp lengkap di seluruh frame",
-      },
-      {
-        category: "LiDAR Point Cloud Raw",
-        count: "4 Files (.LAS / .RBN)",
-        size: "6.5 GB",
-        status: "VALID",
-        notes: "Tersimpan lengkap dari sensor Zenmuse L1",
-      },
-      {
-        category: "Base Station Data (GNSS/PPK)",
-        count: "2 Files (.OBS / .26O)",
-        size: "180 MB",
-        status: "VALID",
-        notes: "File RINEX pengamatan base 8 jam penuh",
-      },
-      {
-        category: "Ground Control Point (GCP)",
-        count: "1 File (.CSV) + 12 Pre-mark Photos",
-        size: "25 MB",
-        status: "VALID",
-        notes: "12 Titik GCP & 4 Titik ICP terukur presisi",
-      },
-    ],
-    technicalChecks: [
-      { label: "File Corrupt Check", passed: true, detail: "0 file rusak dari total 1,446 berkas" },
-      { label: "EXIF Geotag Metadata", passed: true, detail: "Lat, Long, Alt terekam di setiap foto" },
-      { label: "Base Station RINEX Continuity", passed: true, detail: "Interval perekaman 1Hz tanpa terputus" },
-      { label: "GCP Coordinate System", passed: true, detail: "Format WGS84 / UTM Zone 50S terverifikasi" },
-    ],
+// ─── Status Badge Helper ───────────────────────────────────────────────────
+function StatusBadge({ status }: { status: string }) {
+  const map: Record<string, { label: string; cls: string }> = {
+    APPROVED: {
+      label: "Raw Data Verified",
+      cls: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    },
+    PENDING_APPROVAL: {
+      label: "Menunggu Persetujuan",
+      cls: "bg-amber-50 text-amber-700 border-amber-200",
+    },
+    REVISION_NEEDED: {
+      label: "Perlu Revisi",
+      cls: "bg-red-50 text-red-700 border-red-200",
+    },
+    NOT_UPLOADED: {
+      label: "Belum Diunggah",
+      cls: "bg-slate-100 text-slate-500 border-slate-200",
+    },
   };
 
-  const params = useParams();
-  const id = params?.id
+  const s = map[status] ?? map["NOT_UPLOADED"];
+  const isApproved = status === "APPROVED";
 
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border ${s.cls}`}
+    >
+      {isApproved ? (
+        <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+      ) : (
+        <AlertCircle className="w-4 h-4" />
+      )}
+      {s.label}
+    </span>
+  );
+}
+
+// ─── Single Page Component ──────────────────────────────────────────────────
+export default function RawDataPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  // Unbox params promise
+  const resolvedParams = use(params);
+  const id = resolvedParams.id;
+
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isApproving, setIsApproving] = useState(false);
+
+  const [currentUser, setCurrentUser] = useState<{
+    id?: string;
+    name: string;
+    role: "uploader" | "verifier";
+  } | null>(null);
+
+  // 1. Fetch data dari server & sync role pengguna
+  useEffect(() => {
+    async function loadInitialData() {
+      setLoading(true);
+
+      // User role sync
+      const level = localStorage.getItem("userLevel")?.toLowerCase();
+      const name = localStorage.getItem("userName") || "User";
+      const isVerifier =
+        level === "verifikator" || level === "verifier" || level === "admin";
+
+      setCurrentUser({
+        name: name,
+        role: isVerifier ? "verifier" : "uploader",
+      });
+
+      // Server Data Fetching
+      const result = await getRawDataPageData(id);
+      if (result.success && result.data) {
+        setData(result.data);
+      } else {
+        setError(
+          result.error ?? "Terjadi kesalahan saat mengambil data dari server.",
+        );
+      }
+      setLoading(false);
+    }
+
+    loadInitialData();
+  }, [id]);
+
+  // 2. Handle Approval Action
+  const handleApproval = async () => {
+    if (!data || data.status === "APPROVED" || isApproving) return;
+
+    setIsApproving(true);
+    try {
+      // Ambil account_id sebenarnya yang tersimpan dari session/localStorage
+      const storedUserId = localStorage.getItem("userId") || currentUser?.id;
+
+      const res = await approveRawDataGate(data.projectId, storedUserId);
+      if (res.success) {
+        setData((prev: any) => ({ ...prev, status: "APPROVED" }));
+      } else {
+        alert(res.message);
+      }
+    } catch (err) {
+      alert("Terjadi kesalahan saat memproses verifikasi.");
+    } finally {
+      setIsApproving(false);
+    }
+  };
+  // State Loading
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-slate-500">
+        <Loader2 className="w-8 h-8 animate-spin text-[#004b87]" />
+        <span className="text-xs font-semibold">
+          Memuat data Raw Data (Gate 3)...
+        </span>
+      </div>
+    );
+  }
+
+  // State Fallback Error
+  if (error || !data) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 p-8 text-center">
+        <CloudOff className="w-12 h-12 text-slate-300" />
+        <h2 className="text-lg font-bold text-slate-700">Gagal Memuat Data</h2>
+        <p className="text-sm text-slate-500 max-w-sm">{error}</p>
+        <Link
+          href={`/dashboard/${id}`}
+          className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-[#004b87] hover:underline"
+        >
+          <ChevronLeft className="w-4 h-4" /> Kembali ke Dashboard
+        </Link>
+      </div>
+    );
+  }
+
+  const hasFiles = data.files && data.files.length > 0;
+  const hasDriveLink = !!data.driveLink;
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto p-4 sm:p-6 font-sans text-slate-800">
-      {/* Navigation & Header */}
+      {/* ── Navigation & Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
         <div>
           <Link
-            href={`/dashboard/${id}`}
+            href={`/dashboard/${data.projectId}`}
             className="inline-flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-[#004b87] mb-2 transition-colors"
           >
-            <ChevronLeft className="w-4 h-4" /> Kembali ke Step 
+            <ChevronLeft className="w-4 h-4" /> Kembali ke Step
           </Link>
           <div className="flex items-center gap-2">
             <span className="text-xs font-mono text-slate-400 font-bold">
-              {rawDataDetails.projectCode}
+              {data.projectId.slice(0, 8).toUpperCase()}
             </span>
             <span className="text-slate-300">•</span>
             <span className="text-xs font-bold text-[#004b87] uppercase tracking-wider">
-              Gate {rawDataDetails.gateNumber}
+              Gate {data.gateNumber}
             </span>
           </div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight mt-1">
-            {rawDataDetails.gateTitle}
+            {data.gateTitle}
           </h1>
+          <p className="text-sm text-slate-500 mt-0.5">{data.projectName}</p>
         </div>
 
-        {/* Status Badge */}
+        {/* Action / Status Section */}
         <div className="flex items-center gap-3">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border bg-emerald-50 text-emerald-700 border-emerald-200">
-            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-            Raw Data Verified
-          </span>
+          {currentUser?.role === "uploader" ? (
+            <StatusBadge status={data.status} />
+          ) : (
+            <button
+              type="button"
+              onClick={handleApproval}
+              disabled={data.status === "APPROVED" || isApproving}
+              className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${
+                data.status === "APPROVED"
+                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200 cursor-not-allowed"
+                  : "bg-[#004b87] hover:bg-[#003763] text-white cursor-pointer"
+              }`}
+            >
+              {isApproving ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Memproses...</span>
+                </>
+              ) : data.status === "APPROVED" ? (
+                <>
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                  <span>Data Terverifikasi</span>
+                </>
+              ) : (
+                <span>Setujui Raw Data</span>
+              )}
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Ringkasan Metrik Berkas Digital */}
+      {/* ── Ringkasan Metrik ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm">
           <div className="flex items-center justify-between text-slate-500">
-            <span className="text-xs font-bold uppercase tracking-wider">Total Kapasitas</span>
+            <span className="text-xs font-bold uppercase tracking-wider">
+              Total Kapasitas
+            </span>
             <HardDrive className="w-4 h-4 text-[#004b87]" />
           </div>
           <p className="text-2xl font-black text-slate-900 mt-2">
-            {rawDataDetails.totalStorageGB}
+            {hasFiles ? data.formattedStorage : "–"}
           </p>
+          {!hasFiles && (
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              Belum ada berkas
+            </p>
+          )}
         </div>
 
         <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm">
           <div className="flex items-center justify-between text-slate-500">
-            <span className="text-xs font-bold uppercase tracking-wider">Jumlah Foto Luft</span>
+            <span className="text-xs font-bold uppercase tracking-wider">
+              Jumlah Foto Udara
+            </span>
             <ImageIcon className="w-4 h-4 text-[#004b87]" />
           </div>
           <p className="text-2xl font-black text-slate-900 mt-2">
-            {rawDataDetails.totalPhotos.toLocaleString("id-ID")} <span className="text-xs font-normal text-slate-500">Frame</span>
+            {hasFiles ? data.totalImages.toLocaleString("id-ID") : "–"}
+            {hasFiles && (
+              <span className="text-xs font-normal text-slate-500 ml-1">
+                Frame
+              </span>
+            )}
           </p>
         </div>
 
         <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm">
           <div className="flex items-center justify-between text-slate-500">
-            <span className="text-xs font-bold uppercase tracking-wider">Pemeriksa File</span>
+            <span className="text-xs font-bold uppercase tracking-wider">
+              Pengunggah Berkas
+            </span>
             <FileCheck className="w-4 h-4 text-[#004b87]" />
           </div>
           <p className="text-base font-bold text-slate-900 mt-2">
-            {rawDataDetails.verifiedBy}
+            {data.uploadedBy}
           </p>
           <p className="text-[11px] text-slate-400 font-mono mt-0.5">
-            {rawDataDetails.verificationDate}
+            {data.uploadedAt}
           </p>
         </div>
 
         <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm">
           <div className="flex items-center justify-between text-slate-500">
-            <span className="text-xs font-bold uppercase tracking-wider">Integritas Berkas</span>
+            <span className="text-xs font-bold uppercase tracking-wider">
+              Total Berkas
+            </span>
             <Database className="w-4 h-4 text-emerald-600" />
           </div>
-          <p className="text-2xl font-black text-emerald-600 mt-2">100% Valid</p>
-        </div>
-      </div>
-
-      {/* Tabel Rincian Kategori File Digital */}
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-        <div className="p-5 border-b border-slate-200 bg-slate-50/50 flex items-center justify-between">
-          <div>
-            <h2 className="text-base font-bold text-slate-900">
-              Rincian Kategori Berkas Digital Mentah
-            </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Struktur dan kuantitas file yang telah diunggah dan diverifikasi kelengkapannya
+          <p className="text-2xl font-black text-slate-900 mt-2">
+            {hasFiles ? data.totalFiles.toLocaleString("id-ID") : "–"}
+          </p>
+          {hasFiles && (
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              File dari Google Drive
             </p>
+          )}
+        </div>
+      </div>
+
+      {/* ── Drive Error Banner ── */}
+      {data.error && (
+        <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200">
+          <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-bold text-amber-800">
+              Tidak dapat mengambil daftar berkas dari Google Drive
+            </p>
+            <p className="text-xs text-amber-700 mt-0.5">{data.error}</p>
           </div>
-          <FolderArchive className="w-5 h-5 text-slate-400" />
         </div>
+      )}
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-slate-200 bg-slate-50 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                <th className="py-3.5 px-4 sm:px-6">Kategori Berkas</th>
-                <th className="py-3.5 px-4 sm:px-6">Jumlah File</th>
-                <th className="py-3.5 px-4 sm:px-6">Ukuran</th>
-                <th className="py-3.5 px-4 sm:px-6">Catatan Verifikasi</th>
-                <th className="py-3.5 px-4 sm:px-6 text-center">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-sm">
-              {rawDataDetails.fileBreakdown.map((item, idx) => (
-                <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
-                  <td className="py-3.5 px-4 sm:px-6 font-bold text-slate-900">
-                    {item.category}
-                  </td>
-                  <td className="py-3.5 px-4 sm:px-6 text-xs font-mono text-slate-700">
-                    {item.count}
-                  </td>
-                  <td className="py-3.5 px-4 sm:px-6 text-xs font-mono text-slate-700">
-                    {item.size}
-                  </td>
-                  <td className="py-3.5 px-4 sm:px-6 text-xs text-slate-600">
-                    {item.notes}
-                  </td>
-                  <td className="py-3.5 px-4 sm:px-6 text-center">
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                      <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-                      {item.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Checklist Validasi Teknis Data Mentah */}
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5 sm:p-6 space-y-4">
-        <h2 className="text-base font-bold text-slate-900 border-b border-slate-100 pb-3">
-          Checklist QC Teknis Data Mentah
-        </h2>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {rawDataDetails.technicalChecks.map((check, idx) => (
-            <div
-              key={idx}
-              className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 flex items-start gap-3"
-            >
-              <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-xs font-bold text-slate-900">{check.label}</p>
-                <p className="text-[11px] text-slate-500 mt-0.5">{check.detail}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Direct Cloud Access */}
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h3 className="text-sm font-bold text-slate-900">
-            Akses Folder Penyimpanan Raw Data
-          </h3>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Seluruh berkas mentah tersimpan dalam folder Google Drive terstruktur yang siap untuk diolah di Gate 4.
+      {/* ── Status: Drive tidak ada ── */}
+      {!hasDriveLink && (
+        <div className="flex flex-col items-center justify-center gap-3 p-10 rounded-2xl bg-slate-50 border border-dashed border-slate-200 text-center">
+          <CloudOff className="w-10 h-10 text-slate-300" />
+          <p className="text-sm font-bold text-slate-500">
+            Belum ada link Google Drive yang terhubung
+          </p>
+          <p className="text-xs text-slate-400 max-w-sm">
+            Upload progress pada Gate 3 dengan link folder Google Drive untuk
+            menampilkan isi berkas secara langsung di sini.
           </p>
         </div>
+      )}
 
-        <a
-          href={rawDataDetails.driveLink}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#004b87] hover:bg-[#003763] text-white rounded-xl text-xs font-bold shadow-sm transition-all"
-        >
-          <FolderArchive className="w-4 h-4" />
-          <span>Buka Google Drive Raw Data</span>
-          <ExternalLink className="w-3.5 h-3.5" />
-        </a>
-      </div>
+      {/* ── Ringkasan Kategori Berkas (dari Drive) ── */}
+      {hasFiles && data.categories && data.categories.length > 0 && (
+        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+          <div className="p-5 border-b border-slate-200 bg-slate-50/50 flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-bold text-slate-900">
+                Ringkasan Kategori Berkas Drive
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Dikelompokkan otomatis berdasarkan ekstensi file dari Google
+                Drive
+              </p>
+            </div>
+            <FolderArchive className="w-5 h-5 text-slate-400" />
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-slate-200 bg-slate-50 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  <th className="py-3.5 px-4 sm:px-6">Kategori</th>
+                  <th className="py-3.5 px-4 sm:px-6">Format</th>
+                  <th className="py-3.5 px-4 sm:px-6">Jumlah File</th>
+                  <th className="py-3.5 px-4 sm:px-6">Ukuran Total</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-sm">
+                {data.categories.map((cat: any, idx: number) => (
+                  <tr
+                    key={idx}
+                    className="hover:bg-slate-50/80 transition-colors"
+                  >
+                    <td className="py-3.5 px-4 sm:px-6 font-bold text-slate-900">
+                      {cat.category}
+                    </td>
+                    <td className="py-3.5 px-4 sm:px-6">
+                      <div className="flex flex-wrap gap-1">
+                        {cat.extensions.slice(0, 5).map((ext: string) => (
+                          <ExtBadge key={ext} ext={ext} />
+                        ))}
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-4 sm:px-6 font-mono text-xs text-slate-700">
+                      {cat.count.toLocaleString("id-ID")} file
+                    </td>
+                    <td className="py-3.5 px-4 sm:px-6 font-mono text-xs text-slate-700">
+                      {cat.size}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ── Live File Browser ── */}
+      {hasDriveLink && (
+        <DriveFileBrowser
+          files={data.files}
+          driveLink={data.driveLink!}
+          totalFiles={data.totalFiles}
+        />
+      )}
+
+      {/* ── Direct Cloud Access ── */}
+      {hasDriveLink && (
+        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <h3 className="text-sm font-bold text-slate-900">
+              Akses Folder Penyimpanan Raw Data
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Seluruh berkas mentah tersimpan dalam folder Google Drive
+              terstruktur yang siap untuk diolah di Gate 4.
+            </p>
+          </div>
+
+          <a
+            href={data.driveLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#004b87] hover:bg-[#003763] text-white rounded-xl text-xs font-bold shadow-sm transition-all"
+          >
+            <FolderArchive className="w-4 h-4" />
+            <span>Buka Google Drive Raw Data</span>
+            <ExternalLink className="w-3.5 h-3.5" />
+          </a>
+        </div>
+      )}
     </div>
   );
 }

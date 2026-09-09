@@ -125,7 +125,9 @@ export default function SOPTimelineCard() {
 
   // State Modal Upload Data (Disesuaikan dengan tabel 'progress')
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-  const [selectedStep, setSelectedStep] = useState<StepProgressItem | null>(null);
+  const [selectedStep, setSelectedStep] = useState<StepProgressItem | null>(
+    null,
+  );
   const [uploadBy, setUploadBy] = useState<string>("");
   const [uploadDate, setUploadDate] = useState<string>("");
   const [documentLink, setDocumentLink] = useState<string>("");
@@ -226,7 +228,7 @@ export default function SOPTimelineCard() {
 
     if (res.success) {
       setToastMessage(
-        `Data deliverable untuk ${selectedStep.title} berhasil disimpan ke tabel progress!`
+        `Data deliverable untuk ${selectedStep.title} berhasil disimpan ke tabel progress!`,
       );
       setIsUploadModalOpen(false);
       setDocumentLink("");
@@ -241,7 +243,9 @@ export default function SOPTimelineCard() {
     return (
       <div className="p-16 flex flex-col items-center justify-center gap-3 text-slate-500 font-sans">
         <Loader2 className="w-8 h-8 animate-spin text-[#004b87]" />
-        <p className="text-xs font-semibold">Memuat tahapan SOP dari database...</p>
+        <p className="text-xs font-semibold">
+          Memuat tahapan SOP dari database...
+        </p>
       </div>
     );
   }
@@ -294,7 +298,8 @@ export default function SOPTimelineCard() {
             {project?.start_date && (
               <span className="inline-flex items-center gap-1 font-mono text-slate-500">
                 <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                {project.start_date} {project.end_date ? `s/d ${project.end_date}` : ""}
+                {project.start_date}{" "}
+                {project.end_date ? `s/d ${project.end_date}` : ""}
               </span>
             )}
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -341,7 +346,8 @@ export default function SOPTimelineCard() {
               Timeline Progress
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Stage-Gate Workflow Visualization for Photogrammetry &amp; Detection (SOP STI)
+              Stage-Gate Workflow Visualization for Photogrammetry &amp;
+              Detection (SOP STI)
             </p>
           </div>
         </div>
@@ -361,7 +367,9 @@ export default function SOPTimelineCard() {
                     router.push(`/dashboard/${id}/${step.href}`)
                   }
                   className={`relative flex-1 flex flex-col items-center group ${
-                    step.status !== "LOCKED" ? "cursor-pointer" : "cursor-not-allowed"
+                    step.status !== "LOCKED"
+                      ? "cursor-pointer"
+                      : "cursor-not-allowed"
                   }`}
                 >
                   {!isLast && (
@@ -404,7 +412,9 @@ export default function SOPTimelineCard() {
                     <span
                       className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${meta.badge}`}
                     >
-                      <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full ${meta.dot}`}
+                      />
                       {meta.label}
                     </span>
                   </div>
@@ -423,7 +433,8 @@ export default function SOPTimelineCard() {
               Step Progress Details
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Data alur pengerjaan 7 Quality Gates dari tabel database PostgreSQL
+              Data alur pengerjaan 7 Quality Gates dari tabel database
+              PostgreSQL
             </p>
           </div>
           <span className="text-xs font-bold text-[#004b87] bg-[#004b87]/10 px-3 py-1 rounded-full">
@@ -438,7 +449,9 @@ export default function SOPTimelineCard() {
                 <th className="py-3.5 px-4 sm:px-6 w-12 text-center">No.</th>
                 <th className="py-3.5 px-4 sm:px-6">Stage Name (Gate)</th>
                 <th className="py-3.5 px-4 sm:px-6">Uploader (upload_by)</th>
-                <th className="py-3.5 px-4 sm:px-6 text-center">Tanggal (upload_date)</th>
+                <th className="py-3.5 px-4 sm:px-6 text-center">
+                  Tanggal (upload_date)
+                </th>
                 <th className="py-3.5 px-4 sm:px-6 text-center">Status</th>
                 <th className="py-3.5 px-4 sm:px-6 text-center w-48">Action</th>
               </tr>
@@ -488,7 +501,9 @@ export default function SOPTimelineCard() {
                           <span>{step.uploadedBy}</span>
                         </div>
                       ) : (
-                        <span className="text-xs text-slate-400 font-mono">-</span>
+                        <span className="text-xs text-slate-400 font-mono">
+                          -
+                        </span>
                       )}
                     </td>
 
@@ -499,7 +514,9 @@ export default function SOPTimelineCard() {
                           <span>{step.date}</span>
                         </div>
                       ) : (
-                        <span className="text-xs text-slate-400 font-mono">-</span>
+                        <span className="text-xs text-slate-400 font-mono">
+                          -
+                        </span>
                       )}
                     </td>
 
@@ -507,7 +524,9 @@ export default function SOPTimelineCard() {
                       <span
                         className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${meta.badge}`}
                       >
-                        <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${meta.dot}`}
+                        />
                         {meta.label}
                       </span>
                     </td>
@@ -522,19 +541,27 @@ export default function SOPTimelineCard() {
                       )}
 
                       {/* VERIFIER ON PENDING REVIEW */}
-                      {isVerifier &&
-                        (step.status === "PENDING_APPROVAL" ||
-                          step.status === "PENDING_UPLOAD") && (
-                          <div className="flex items-center justify-center gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => router.push(`/dashboard/${id}/${step.href}`)}
-                              className="px-3 py-1.5 text-xs font-bold text-[#004b87] bg-[#004b87]/10 hover:bg-[#004b87] hover:text-white border border-[#004b87]/20 rounded-lg transition-all"
-                            >
-                              Review &amp; QC
-                            </button>
-                          </div>
-                        )}
+                      {isVerifier && step.status === "PENDING_APPROVAL" && (
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              router.push(`/dashboard/${id}/${step.href}`)
+                            }
+                            className="px-3 py-1.5 text-xs font-bold text-[#004b87] bg-[#004b87]/10 hover:bg-[#004b87] hover:text-white border border-[#004b87]/20 rounded-lg transition-all"
+                          >
+                            Review &amp; QC
+                          </button>
+                        </div>
+                      )}
+                      {isVerifier && step.status === "PENDING_UPLOAD" && (
+                        <div className="flex items-center justify-center gap-1.5">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs text-slate-400 bg-slate-100 border border-slate-200 rounded-lg">
+                            <Lock className="w-3 h-3" />
+                            Waiting for Upload
+                          </span>
+                        </div>
+                      )}
 
                       {/* UPLOADER ACTION */}
                       {!isVerifier &&
@@ -562,7 +589,9 @@ export default function SOPTimelineCard() {
                         step.status !== "LOCKED" && (
                           <button
                             type="button"
-                            onClick={() => router.push(`/dashboard/${id}/${step.href}`)}
+                            onClick={() =>
+                              router.push(`/dashboard/${id}/${step.href}`)
+                            }
                             className="inline-flex items-center justify-center gap-1 px-3 py-1.5 text-xs font-bold text-[#004b87] bg-[#004b87]/10 hover:bg-[#004b87] hover:text-white border border-[#004b87]/20 rounded-lg transition-all"
                           >
                             Details
@@ -613,20 +642,26 @@ export default function SOPTimelineCard() {
               {/* 1. Target Step (step_id) & Project Info */}
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-slate-500">Tahapan (step_id):</span>
+                  <span className="font-semibold text-slate-500">
+                    Tahapan (step_id):
+                  </span>
                   <span className="font-bold text-slate-900">
                     Gate {selectedStep.gateNumber} - {selectedStep.title}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-slate-500">Format Output:</span>
+                  <span className="font-semibold text-slate-500">
+                    Format Output:
+                  </span>
                   <span className="font-mono text-[11px] text-slate-700 bg-white px-2 py-0.5 rounded border border-slate-200">
                     {selectedStep.output}
                   </span>
                 </div>
                 {project && (
                   <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-200/60">
-                    <span className="font-semibold text-slate-500">Proyek (project_id):</span>
+                    <span className="font-semibold text-slate-500">
+                      Proyek (project_id):
+                    </span>
                     <span className="font-semibold text-[#004b87] truncate max-w-[240px]">
                       {project.project_name}
                     </span>
@@ -637,7 +672,8 @@ export default function SOPTimelineCard() {
               {/* 2. Pengunggah (upload_by UUID) */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Pengunggah (upload_by) <span className="text-rose-500">*</span>
+                  Pengunggah (upload_by){" "}
+                  <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
@@ -660,7 +696,8 @@ export default function SOPTimelineCard() {
               {/* 3. Tanggal Upload (upload_date DATE) */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Tanggal Upload (upload_date) <span className="text-rose-500">*</span>
+                  Tanggal Upload (upload_date){" "}
+                  <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
                   <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
@@ -677,7 +714,8 @@ export default function SOPTimelineCard() {
               {/* 4. Link Dokumen (document_link TEXT) */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Tautan File / Dokumen (document_link) <span className="text-rose-500">*</span>
+                  Tautan File / Dokumen (document_link){" "}
+                  <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
                   <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
@@ -691,7 +729,8 @@ export default function SOPTimelineCard() {
                   />
                 </div>
                 <p className="text-[11px] text-slate-400 mt-1">
-                  Masukkan URL cloud storage (Google Drive, Dropbox, AWS S3) tempat data deliverable disimpan.
+                  Masukkan URL cloud storage (Google Drive, Dropbox, AWS S3)
+                  tempat data deliverable disimpan.
                 </p>
               </div>
 
@@ -699,7 +738,9 @@ export default function SOPTimelineCard() {
               <div className="p-3 bg-sky-50/50 border border-sky-100 rounded-xl text-[11px] text-sky-800 flex items-start gap-2">
                 <CheckCircle2 className="w-4 h-4 text-sky-600 flex-shrink-0 mt-0.5" />
                 <span>
-                  Setelah data dikirim, kolom <strong>approvedBy</strong> dan <strong>rejectionBy</strong> akan disetel otomatis ke antrean verifikasi hingga divalidasi oleh verifikator.
+                  Setelah data dikirim, kolom <strong>approvedBy</strong> dan{" "}
+                  <strong>rejectionBy</strong> akan disetel otomatis ke antrean
+                  verifikasi hingga divalidasi oleh verifikator.
                 </span>
               </div>
 
