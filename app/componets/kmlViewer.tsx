@@ -72,7 +72,7 @@ export default function KmlMapViewer({ file }: KmlMapViewerProps) {
 
         if (!res.ok) {
           const errData = await res.json().catch(() => ({}));
-          throw new Error(errData.error || "Gagal mengambil data KML dari Google Drive.");
+          throw new Error(errData.error || "Failed to retrieve KML data from Google Drive.");
         }
 
         let xmlText = "";
@@ -86,7 +86,7 @@ export default function KmlMapViewer({ file }: KmlMapViewerProps) {
           );
 
           if (!kmlFileInZip) {
-            throw new Error("Berkas .kml tidak ditemukan di dalam arsip KMZ.");
+            throw new Error(".kml file was not found inside the KMZ archive.");
           }
           xmlText = await zip.files[kmlFileInZip].async("string");
         } else {
@@ -95,18 +95,18 @@ export default function KmlMapViewer({ file }: KmlMapViewerProps) {
 
         if (isCancelled) return;
 
-        // 3. Konversi KML -> GeoJSON
+        // 3. Convert KML -> GeoJSON
         const dom = new DOMParser().parseFromString(xmlText, "text/xml");
         const geojson = kml(dom);
 
         if (!geojson || !geojson.features || geojson.features.length === 0) {
-          throw new Error("Berkas KML/KMZ tidak memiliki objek spasial/geometris yang valid.");
+          throw new Error("The KML/KMZ file does not contain valid spatial/geometric objects.");
         }
 
         const containerEl = containerRef.current;
         if (!containerEl || isCancelled) return;
 
-        // 4. Inisialisasi Peta Leaflet
+        // 4. Initialize Leaflet Map
         const map = L.map(containerEl).setView([-0.91, 116.78], 12);
         mapRef.current = map;
 
@@ -119,10 +119,10 @@ export default function KmlMapViewer({ file }: KmlMapViewerProps) {
           }
         ).addTo(map);
 
-        // 5. Render Layer Spasial
+        // 5. Render Spatial Layer
         const geoLayer = L.geoJSON(geojson, {
           style: {
-            color: "#38bdf8", // Sky blue kontras tinggi
+            color: "#38bdf8", // High contrast sky blue
             weight: 3,
             opacity: 0.95,
             fillColor: "#0284c7",
@@ -142,7 +142,7 @@ export default function KmlMapViewer({ file }: KmlMapViewerProps) {
             if (feature.properties?.name || feature.properties?.description) {
               layer.bindPopup(`
                 <div class="text-xs font-sans p-1">
-                  <strong>${feature.properties.name || "Titik Jalur Terbang"}</strong>
+                  <strong>${feature.properties.name || "Flight Path Waypoint"}</strong>
                   ${feature.properties.description ? `<p class="mt-1 text-slate-600">${feature.properties.description}</p>` : ""}
                 </div>
               `);
@@ -150,12 +150,12 @@ export default function KmlMapViewer({ file }: KmlMapViewerProps) {
           },
         }).addTo(map);
 
-        // Auto Zoom ke Bounding Box Jalur Terbang
+        // Auto Zoom to Flight Path Bounding Box
         if (geoLayer.getBounds().isValid()) {
           map.fitBounds(geoLayer.getBounds(), { padding: [40, 40] });
         }
 
-        // Trigger penyesuaian ukuran
+        // Trigger map size recalculation
         setTimeout(() => {
           if (!isCancelled && mapRef.current) {
             mapRef.current.invalidateSize();
@@ -163,8 +163,8 @@ export default function KmlMapViewer({ file }: KmlMapViewerProps) {
         }, 200);
       } catch (err: any) {
         if (!isCancelled) {
-          console.error("Gagal memproses KML:", err);
-          setError(err.message || "Gagal memproses berkas peta spasial.");
+          console.error("Failed to process KML:", err);
+          setError(err.message || "Failed to process spatial map file.");
         }
       } finally {
         if (!isCancelled) {
@@ -190,7 +190,7 @@ export default function KmlMapViewer({ file }: KmlMapViewerProps) {
       {loading && (
         <div className="absolute inset-0 z-20 bg-slate-900/85 backdrop-blur-xs flex flex-col items-center justify-center text-slate-300 gap-2">
           <Loader2 className="w-8 h-8 animate-spin text-[#38bdf8]" />
-          <span className="text-xs font-semibold">Memuat peta spasial: {file?.name}...</span>
+          <span className="text-xs font-semibold">Loading spatial map: {file?.name}...</span>
         </div>
       )}
 
@@ -207,7 +207,7 @@ export default function KmlMapViewer({ file }: KmlMapViewerProps) {
               className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg border border-slate-700 transition-colors"
             >
               <ExternalLink className="w-3.5 h-3.5" />
-              <span>Buka langsung di Google Drive</span>
+              <span>Open directly in Google Drive</span>
             </a>
           )}
         </div>
@@ -216,7 +216,7 @@ export default function KmlMapViewer({ file }: KmlMapViewerProps) {
         <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-500 p-6 text-center">
           <MapPin className="w-10 h-10 mb-2 text-slate-600" />
           <p className="text-xs font-semibold text-slate-400">
-            Pilih berkas dari tabel di bawah untuk menampilkan preview jalur terbang di peta.
+            Select a file from the table below to display the flight path preview on the map.
           </p>
         </div>
       ) : isImage ? (
@@ -240,7 +240,7 @@ export default function KmlMapViewer({ file }: KmlMapViewerProps) {
           <FileText className="w-12 h-12 text-slate-600 mb-3" />
           <p className="text-sm font-bold text-slate-200">{file.name}</p>
           <p className="text-xs text-slate-400 mt-1 max-w-sm">
-            Berkas ini berformat <span className="font-mono font-bold text-amber-400">.{file.extension}</span>. Peta interaktif Leaflet dirancang untuk berkas spasial <span className="font-mono font-bold text-sky-400">.KML</span> atau <span className="font-mono font-bold text-sky-400">.KMZ</span>.
+            This file is in <span className="font-mono font-bold text-amber-400">.{file.extension}</span> format. The interactive map is designed for spatial files (<span className="font-mono font-bold text-sky-400">.KML</span> or <span className="font-mono font-bold text-sky-400">.KMZ</span>).
           </p>
           <a
             href={file.webViewLink}
@@ -249,7 +249,7 @@ export default function KmlMapViewer({ file }: KmlMapViewerProps) {
             className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-[#004b87] hover:bg-[#003763] text-white text-xs font-bold rounded-xl transition-all shadow-md"
           >
             <ExternalLink className="w-3.5 h-3.5" />
-            <span>Buka Berkas di Google Drive</span>
+            <span>Open File in Google Drive</span>
           </a>
         </div>
       ) : null}

@@ -73,15 +73,15 @@ function ListView({ files }: { files: DriveFileItem[] }) {
       <table className="w-full text-left border-collapse">
         <thead>
           <tr className="border-b border-slate-200 bg-slate-50 text-xs font-bold text-slate-500 uppercase tracking-wider">
-            <th className="py-3.5 px-4 sm:px-6">File Name</th>
-            <th className="py-3.5 px-4 sm:px-6">Type</th>
-            <th className="py-3.5 px-4 sm:px-6">Size</th>
+            <th className="py-3.5 px-4 sm:px-6">Nama Berkas</th>
+            <th className="py-3.5 px-4 sm:px-6">Tipe</th>
+            <th className="py-3.5 px-4 sm:px-6">Ukuran</th>
             <th className="py-3.5 px-4 sm:px-6">
               <span className="flex items-center gap-1">
-                <Clock className="w-3 h-3" /> Modified
+                <Clock className="w-3 h-3" /> Dimodifikasi
               </span>
             </th>
-            <th className="py-3.5 px-4 sm:px-6 text-center">Action</th>
+            <th className="py-3.5 px-4 sm:px-6 text-center">Aksi</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100 text-sm">
@@ -117,7 +117,7 @@ function ListView({ files }: { files: DriveFileItem[] }) {
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold text-[#004b87] border border-[#004b87]/20 hover:bg-[#004b87]/5 transition-colors opacity-0 group-hover:opacity-100"
                 >
-                  <ExternalLink className="w-3 h-3" /> Open
+                  <ExternalLink className="w-3 h-3" /> Buka
                 </a>
               </td>
             </tr>
@@ -177,7 +177,7 @@ function GridView({ files }: { files: DriveFileItem[] }) {
 
           {/* Hover: open link indicator */}
           <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-[#004b87] opacity-0 group-hover:opacity-100 transition-opacity">
-            <ExternalLink className="w-2.5 h-2.5" /> Open
+            <ExternalLink className="w-2.5 h-2.5" /> Buka
           </span>
         </a>
       ))}
@@ -208,13 +208,13 @@ export default function DriveFileBrowser({
       <div className="p-5 border-b border-slate-200 bg-slate-50/50 flex items-center justify-between gap-3">
         <div>
           <h2 className="text-base font-bold text-slate-900">
-            Google Drive Folder Contents
+            Isi Folder Google Drive
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Real-time data from Google Drive API
+            Data real-time dari Google Drive API
             {hasFiles && (
               <span className="ml-1 font-semibold text-emerald-600">
-                · {totalFiles} files found
+                · {totalFiles} berkas ditemukan
               </span>
             )}
           </p>
@@ -226,7 +226,7 @@ export default function DriveFileBrowser({
             <div className="flex items-center bg-slate-100 rounded-lg p-0.5 gap-0.5">
               <button
                 onClick={() => setView("list")}
-                title="List View"
+                title="Tampilan List"
                 className={`p-1.5 rounded-md transition-all ${
                   view === "list"
                     ? "bg-white shadow text-[#004b87]"
@@ -237,7 +237,7 @@ export default function DriveFileBrowser({
               </button>
               <button
                 onClick={() => setView("grid")}
-                title="Grid View"
+                title="Tampilan Grid"
                 className={`p-1.5 rounded-md transition-all ${
                   view === "grid"
                     ? "bg-white shadow text-[#004b87]"
@@ -256,7 +256,7 @@ export default function DriveFileBrowser({
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-[#004b87] border border-[#004b87]/20 rounded-lg hover:bg-[#004b87]/5 transition-colors"
           >
             <ExternalLink className="w-3.5 h-3.5" />
-            Open Drive
+            Buka Drive
           </a>
         </div>
       </div>
@@ -266,10 +266,11 @@ export default function DriveFileBrowser({
         <div className="flex flex-col items-center gap-2 py-14 text-center">
           <Search className="w-8 h-8 text-slate-300" />
           <p className="text-sm font-semibold text-slate-500">
-            Google Drive folder is empty or cannot be accessed
+            Folder Google Drive kosong atau tidak dapat diakses
           </p>
           <p className="text-xs text-slate-400 max-w-xs">
-            Ensure the folder is public or the API Key has the required permissions.
+            Pastikan folder bersifat publik atau API Key memiliki akses yang
+            diperlukan.
           </p>
         </div>
       )}

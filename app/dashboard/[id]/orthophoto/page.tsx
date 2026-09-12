@@ -36,15 +36,15 @@ function StatusBadge({ status }: { status: string }) {
       cls: "bg-emerald-50 text-emerald-700 border-emerald-200",
     },
     PENDING_APPROVAL: {
-      label: "Menunggu Persetujuan",
+      label: "Pending Verification",
       cls: "bg-amber-50 text-amber-700 border-amber-200",
     },
     REVISION_NEEDED: {
-      label: "Perlu Revisi",
+      label: "Revision Needed",
       cls: "bg-red-50 text-red-700 border-red-200",
     },
     NOT_UPLOADED: {
-      label: "Belum Diunggah",
+      label: "Not Uploaded",
       cls: "bg-slate-100 text-slate-500 border-slate-200",
     },
   };
@@ -72,7 +72,7 @@ export default function OrthophotoPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  // Unbox params promise secara konsisten
+  // Unbox params promise
   const resolvedParams = use(params);
   const id = resolvedParams.id;
 
@@ -88,12 +88,12 @@ export default function OrthophotoPage({
     role: "uploader" | "verifier";
   } | null>(null);
 
-  // 1. Fetch data dari server action berdasarkan projectId & sync role pengguna
+  // 1. Fetch data from server action & sync user role
   useEffect(() => {
     async function loadInitialData() {
       setLoading(true);
 
-      // User role sync dari localStorage
+      // User role sync
       const level = localStorage.getItem("userLevel")?.toLowerCase();
       const name = localStorage.getItem("userName") || "User";
       const isVerifier =
@@ -104,12 +104,12 @@ export default function OrthophotoPage({
         role: isVerifier ? "verifier" : "uploader",
       });
 
-      // Ambil data Gate Orthophoto via Server Action
+      // Fetch Gate Orthophoto data via Server Action
       const result = await getOrthophotoPageData(id);
       if (result.success && result.data) {
         setData(result.data);
 
-        // Pilih file .TIF / .TIFF pertama atau file gambar sebagai preview default
+        // Select first .TIF / .TIFF file or image as default preview
         const fetchedFiles: DriveFileItem[] = result.data.files || [];
         const firstTiff = fetchedFiles.find(
           (f) => f.extension === "TIF" || f.extension === "TIFF" || f.isImage,
@@ -118,7 +118,7 @@ export default function OrthophotoPage({
       } else {
         setError(
           result.error ??
-            "Terjadi kesalahan saat mengambil data Orthophoto dari server.",
+            "An error occurred while fetching Orthophoto data from server.",
         );
       }
       setLoading(false);
@@ -141,13 +141,13 @@ export default function OrthophotoPage({
         alert(res.message);
       }
     } catch (err) {
-      alert("Terjadi kesalahan saat memproses verifikasi Orthophoto.");
+      alert("An error occurred while verifying Orthophoto.");
     } finally {
       setIsApproving(false);
     }
   };
 
-  // Utility untuk upgrade kualitas thumbnail Google Drive dari =s220 ke High-Res =s1600
+  // Utility to upgrade Google Drive thumbnail quality
   const getHighResThumbnail = (link?: string) => {
     if (!link) return null;
     return link.replace(/=s\d+/, "=s1600");
@@ -159,7 +159,7 @@ export default function OrthophotoPage({
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-slate-500">
         <Loader2 className="w-8 h-8 animate-spin text-[#004b87]" />
         <span className="text-xs font-semibold">
-          Memuat data Orthophoto (Gate 5)...
+          Loading Orthophoto data (Gate 5)...
         </span>
       </div>
     );
@@ -170,13 +170,13 @@ export default function OrthophotoPage({
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 p-8 text-center">
         <CloudOff className="w-12 h-12 text-slate-300" />
-        <h2 className="text-lg font-bold text-slate-700">Gagal Memuat Data</h2>
+        <h2 className="text-lg font-bold text-slate-700">Failed to Load Data</h2>
         <p className="text-sm text-slate-500 max-w-sm">{error}</p>
         <Link
           href={`/dashboard/${id}`}
           className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-[#004b87] hover:underline"
         >
-          <ChevronLeft className="w-4 h-4" /> Kembali ke Dashboard
+          <ChevronLeft className="w-4 h-4" /> Back to Dashboard
         </Link>
       </div>
     );
@@ -194,7 +194,7 @@ export default function OrthophotoPage({
             href={`/dashboard/${data.projectId}`}
             className="inline-flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-[#004b87] mb-2 transition-colors"
           >
-            <ChevronLeft className="w-4 h-4" /> Kembali ke Step
+            <ChevronLeft className="w-4 h-4" /> Back to Stages
           </Link>
           <div className="flex items-center gap-2">
             <span className="text-xs font-mono text-slate-400 font-bold">
@@ -229,92 +229,20 @@ export default function OrthophotoPage({
               {isApproving ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Memproses...</span>
+                  <span>Processing...</span>
                 </>
               ) : data.status === "APPROVED" ? (
                 <>
                   <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                  <span>Orthophoto Terverifikasi</span>
+                  <span>Orthophoto Verified</span>
                 </>
               ) : (
-                <span>Setujui Orthophoto</span>
+                <span>Approve Orthophoto</span>
               )}
             </button>
           )}
         </div>
       </div>
-
-      {/* ── CARD 1: PREVIEW ORTHOPHOTO (Height 60vh) ── */}
-      {/* <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col">
-        <div className="p-4 border-b border-slate-200 bg-slate-50/80 flex items-center justify-between">
-          <div className="flex items-center gap-2 min-w-0">
-            <ImageIcon className="w-4 h-4 text-[#004b87] shrink-0" />
-            <h2 className="text-sm font-bold text-slate-900">
-              Live GeoTIFF Visualizer
-            </h2>
-            {selectedFile && (
-              <span className="text-xs font-mono text-slate-600 bg-slate-200/70 px-2 py-0.5 rounded ml-2 truncate max-w-xs sm:max-w-md">
-                {selectedFile.name}
-              </span>
-            )}
-          </div>
-          {selectedFile && (
-            <a
-              href={selectedFile.webViewLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-xs font-bold text-[#004b87] hover:underline shrink-0"
-            >
-              <span>Buka File Drive</span>
-              <Maximize2 className="w-3.5 h-3.5" />
-            </a>
-          )}
-        </div> */}
-
-        {/* Viewport Canvas Preview 60vh */}
-        {/* <div className="h-[60vh] w-full bg-slate-950 relative flex items-center justify-center p-4 overflow-hidden group">
-          {selectedFile ? (
-            <>
-              {selectedFile.thumbnailLink ? (
-                <img
-                  src={getHighResThumbnail(selectedFile.thumbnailLink)!}
-                  alt={selectedFile.name}
-                  className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-[1.01]"
-                />
-              ) : (
-                <div className="text-center text-slate-400 p-6">
-                  <FileCode className="w-12 h-12 mx-auto mb-2 text-slate-600" />
-                  <p className="text-xs font-semibold text-slate-300">
-                    Preview langsung tidak tersedia untuk format file ini.
-                  </p>
-                  <p className="text-[11px] text-slate-500 mt-1">
-                    Gunakan tombol di pojok kanan atas untuk membuka file asli
-                    di Drive.
-                  </p>
-                </div>
-              )} */}
-
-              {/* Floating Metadata Overlay */}
-              {/* <div className="absolute bottom-4 left-4 bg-slate-900/80 backdrop-blur-md border border-white/10 p-3 rounded-xl text-white text-xs space-y-1 max-w-md shadow-lg">
-                <p className="font-bold truncate">{selectedFile.name}</p>
-                <div className="flex items-center gap-3 text-[11px] text-slate-300 font-mono">
-                  <span>Size: {selectedFile.formattedSize}</span>
-                  <span>•</span>
-                  <span>Ext: {selectedFile.extension}</span>
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="text-center text-slate-500">
-              <Layers className="w-10 h-10 mx-auto mb-2 text-slate-700" />
-              <p className="text-xs font-semibold">
-                Pilih salah satu berkas dari daftar di bawah untuk menampilkan
-                preview.
-              </p>
-            </div>
-          )}
-        </div>
-      </div> */}
 
       {/* ── Drive Error Banner ── */}
       {data.error && (
@@ -322,23 +250,22 @@ export default function OrthophotoPage({
           <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
           <div>
             <p className="text-sm font-bold text-amber-800">
-              Tidak dapat mengambil daftar berkas dari Google Drive
+              Unable to retrieve file list from Google Drive
             </p>
             <p className="text-xs text-amber-700 mt-0.5">{data.error}</p>
           </div>
         </div>
       )}
 
-      {/* ── Status: Drive tidak ada ── */}
+      {/* ── Status: Drive not linked ── */}
       {!hasDriveLink && (
         <div className="flex flex-col items-center justify-center gap-3 p-10 rounded-2xl bg-slate-50 border border-dashed border-slate-200 text-center">
           <CloudOff className="w-10 h-10 text-slate-300" />
           <p className="text-sm font-bold text-slate-500">
-            Belum ada link Google Drive yang terhubung
+            No Google Drive link connected yet
           </p>
           <p className="text-xs text-slate-400 max-w-sm">
-            Upload progress pada Gate 5 dengan link folder Google Drive untuk
-            menampilkan isi berkas secara langsung di sini.
+            Upload progress for Gate 5 with a Google Drive folder link to view files directly here.
           </p>
         </div>
       )}
@@ -349,8 +276,6 @@ export default function OrthophotoPage({
           files={data.files}
           driveLink={data.driveLink!}
           totalFiles={data.totalFiles}
-          //   selectedFileId={selectedFile?.id}
-          //   onSelectFile={(file) => setSelectedFile(file)}
         />
       )}
 
@@ -359,11 +284,10 @@ export default function OrthophotoPage({
         <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <h3 className="text-sm font-bold text-slate-900">
-              Akses Folder Penyimpanan Orthophoto
+              Orthophoto Storage Folder Access
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Seluruh hasil olahan Orthomosaic tersimpan dalam Google Drive
-              terstruktur yang siap diunduh atau digabungkan ke SIG.
+              All processed Orthomosaic results are stored in a structured Google Drive folder ready for download or GIS integration.
             </p>
           </div>
 
@@ -374,7 +298,7 @@ export default function OrthophotoPage({
             className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#004b87] hover:bg-[#003763] text-white rounded-xl text-xs font-bold shadow-sm transition-all"
           >
             <FolderArchive className="w-4 h-4" />
-            <span>Buka Google Drive Orthophoto</span>
+            <span>Open Orthophoto Google Drive</span>
             <ExternalLink className="w-3.5 h-3.5" />
           </a>
         </div>

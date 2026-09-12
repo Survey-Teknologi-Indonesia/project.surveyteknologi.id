@@ -34,19 +34,19 @@ import KmlMapViewer from "@/app/componets/kmlViewer";
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; cls: string }> = {
     APPROVED: {
-      label: "Flight Plan Disetujui",
+      label: "Flight Plan Approved",
       cls: "bg-emerald-50 text-emerald-700 border-emerald-200",
     },
     PENDING_APPROVAL: {
-      label: "Menunggu Verifikasi",
+      label: "Pending Verification",
       cls: "bg-amber-50 text-amber-700 border-amber-200",
     },
     REVISION_NEEDED: {
-      label: "Perlu Revisi",
+      label: "Revision Needed",
       cls: "bg-rose-50 text-rose-700 border-rose-200",
     },
     NOT_UPLOADED: {
-      label: "Belum Diunggah",
+      label: "Not Uploaded",
       cls: "bg-slate-100 text-slate-500 border-slate-200",
     },
   };
@@ -94,12 +94,12 @@ export default function FlightPlanPage({
     role: "uploader" | "verifier";
   } | null>(null);
 
-  // Load data dari Server Action
+  // Load data from Server Action
   const loadData = async () => {
     setIsLoading(true);
     setError(null);
 
-    // Sync role pengguna dari localStorage / Auth
+    // Sync user role from localStorage / Auth
     const level = localStorage.getItem("userLevel")?.toLowerCase();
     const name = localStorage.getItem("userName") || "User";
     const isVerifier =
@@ -114,7 +114,7 @@ export default function FlightPlanPage({
     if (res.success && res.data) {
       setFlightData(res.data);
 
-      // Pilih file KML pertama atau file gambar sebagai preview default
+      // Select first KML file or image as default preview
       const fetchedFiles: DriveFileItem[] = res.data.files || [];
       const firstKmlOrImage = fetchedFiles.find(
         (f) => f.extension === "KML" || f.extension === "KMZ" || f.isImage,
@@ -123,7 +123,7 @@ export default function FlightPlanPage({
     } else {
       setError(
         res.error ??
-          "Terjadi kesalahan saat mengambil data Flight Plan dari database.",
+          "An error occurred while fetching Flight Plan data from database.",
       );
     }
     setIsLoading(false);
@@ -143,13 +143,13 @@ export default function FlightPlanPage({
       const res = await approveFlightPlanGate(flightData.projectId, storedUserId);
       if (res.success) {
         setFlightData((prev: any) => ({ ...prev, status: "APPROVED" }));
-        setToastMessage("Gate 1 (Flight Plan) berhasil disetujui!");
+        setToastMessage("Gate 1 (Flight Plan) successfully approved!");
         setTimeout(() => setToastMessage(null), 4000);
       } else {
-        alert(res.message || "Gagal menyetujui tahapan.");
+        alert(res.message || "Failed to approve stage.");
       }
     } catch (err) {
-      alert("Terjadi kesalahan saat memproses verifikasi Flight Plan.");
+      alert("An error occurred while verifying Flight Plan.");
     } finally {
       setIsApproving(false);
     }
@@ -160,7 +160,7 @@ export default function FlightPlanPage({
       <div className="p-16 flex flex-col items-center justify-center gap-3 text-slate-500 font-sans min-h-[60vh]">
         <Loader2 className="w-8 h-8 animate-spin text-[#004b87]" />
         <p className="text-xs font-semibold">
-          Memuat data Flight Plan (Gate 1)...
+          Loading Flight Plan data (Gate 1)...
         </p>
       </div>
     );
@@ -170,13 +170,13 @@ export default function FlightPlanPage({
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 p-8 text-center font-sans">
         <AlertCircle className="w-12 h-12 text-slate-300" />
-        <h2 className="text-lg font-bold text-slate-700">Gagal Memuat Data</h2>
+        <h2 className="text-lg font-bold text-slate-700">Failed to Load Data</h2>
         <p className="text-sm text-slate-500 max-w-sm">{error}</p>
         <Link
           href={`/dashboard/${id}`}
           className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-[#004b87] hover:underline"
         >
-          <ArrowLeft className="w-4 h-4" /> Kembali ke Dashboard
+          <ArrowLeft className="w-4 h-4" /> Back to Dashboard
         </Link>
       </div>
     );
@@ -201,7 +201,7 @@ export default function FlightPlanPage({
           <Link
             href={`/dashboard/${flightData.projectId}`}
             className="p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 transition-colors text-slate-600"
-            title="Kembali ke Dashboard"
+            title="Back to Dashboard"
           >
             <ArrowLeft className="w-5 h-5" />
           </Link>
@@ -221,7 +221,7 @@ export default function FlightPlanPage({
             {flightData.client && (
               <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
                 <Building2 className="w-3.5 h-3.5 text-slate-400" />
-                Klien: {flightData.client}
+                Client: {flightData.client}
               </p>
             )}
           </div>
@@ -232,7 +232,7 @@ export default function FlightPlanPage({
           <button
             type="button"
             onClick={loadData}
-            title="Muat Ulang Data"
+            title="Reload Data"
             className="p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition-colors"
           >
             <RefreshCw className="w-4 h-4" />
@@ -255,15 +255,15 @@ export default function FlightPlanPage({
                 {isApproving ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Memproses...</span>
+                    <span>Processing...</span>
                   </>
                 ) : flightData.status === "APPROVED" ? (
                   <>
                     <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                    <span>Flight Plan Terverifikasi</span>
+                    <span>Flight Plan Verified</span>
                   </>
                 ) : (
-                  <span>Setujui Flight Plan</span>
+                  <span>Approve Flight Plan</span>
                 )}
               </button>
             )}
@@ -277,7 +277,7 @@ export default function FlightPlanPage({
           <div className="flex items-center gap-2 min-w-0">
             <Map className="w-4 h-4 text-[#004b87] shrink-0" />
             <h2 className="text-sm font-bold text-slate-800">
-              Preview Jalur &amp; Dokumen Flight Plan
+              Flight Plan Path &amp; Document Preview
             </h2>
             {selectedFile && (
               <span className="text-xs font-mono text-slate-600 bg-slate-200/70 px-2 py-0.5 rounded ml-2 truncate max-w-xs sm:max-w-md">
@@ -292,7 +292,7 @@ export default function FlightPlanPage({
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-xs font-bold text-[#004b87] hover:underline shrink-0"
             >
-              <span>Buka File Drive</span>
+              <span>Open Drive File</span>
               <ExternalLink className="w-3.5 h-3.5" />
             </a>
           )}
@@ -315,7 +315,7 @@ export default function FlightPlanPage({
         />
       ) : (
         <div className="p-8 rounded-2xl bg-slate-50 border border-dashed border-slate-200 text-center text-xs text-slate-500">
-          Belum ada tautan Google Drive yang dikaitkan pada tahapan ini.
+          No Google Drive link associated with this stage yet.
         </div>
       )}
     </div>

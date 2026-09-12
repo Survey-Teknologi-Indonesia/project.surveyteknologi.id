@@ -39,24 +39,24 @@ export default function DashboardLayout({
     setIsRefreshing(true);
     setTimeout(() => {
       setIsRefreshing(false);
-      setToastMessage("Data statistik dashboard berhasil diperbarui!");
+      setToastMessage("Dashboard statistics updated successfully!");
     }, 700);
   };
 
   const handleExportReport = () => {
     setToastMessage(
-      "Laporan Tagihan & Pembayaran Q3_2026.pdf sedang diunduh...",
+      "Billing & Payment Report Q3_2026.pdf is downloading...",
     );
   };
 
   const handleTaskingRequest = () => {
     setToastMessage(
-      "Permintaan Tasking Satelit Resolusi 1.5m telah dijadwalkan ke Tim Operasional.",
+      "1.5m Satellite Tasking Request has been scheduled with Operations.",
     );
   };
 
   return (
-    <html lang="id" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <body className="antialiased min-h-screen bg-slate-50 text-slate-100 font-sans">
         <div className="min-h-screen print:min-h-auto flex bg-slate-50  text-slate-100 light:text-slate-900 font-sans transition-colors duration-300 relative overflow-x-clip print:overflow-visible">
           {/* 1. SIDEBAR KIRI */}

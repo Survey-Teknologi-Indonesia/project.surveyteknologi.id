@@ -66,7 +66,7 @@ export default function ProjectsPage() {
     if (res.success && res.data) {
       setProjects(res.data.projects);
     } else {
-      setErrorMessage(res.error || "Gagal memuat data proyek dari database.");
+      setErrorMessage(res.error || "Failed to load project data from database.");
     }
     setIsLoading(false);
   };
@@ -97,7 +97,7 @@ export default function ProjectsPage() {
   const addedCount = projects.filter((p) => p.status === "added").length;
   const uniqueClientsCount = new Set(projects.map((p) => p.client)).size;
 
-  // Render Status Badge sesuai enum tabel project
+  // Render Status Badge
   const renderStatusBadge = (status?: ProjectStatus | null) => {
     switch (status) {
       case "On Going":
@@ -135,7 +135,7 @@ export default function ProjectsPage() {
     if (!dateStr) return "-";
     try {
       const d = new Date(dateStr);
-      return d.toLocaleDateString("id-ID", {
+      return d.toLocaleDateString("en-US", {
         day: "2-digit",
         month: "short",
         year: "numeric",
@@ -149,11 +149,11 @@ export default function ProjectsPage() {
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.project_name.trim()) {
-      setFormError("Nama proyek wajib diisi.");
+      setFormError("Project name is required.");
       return;
     }
     if (!formData.client.trim()) {
-      setFormError("Nama klien wajib diisi.");
+      setFormError("Client name is required.");
       return;
     }
 
@@ -179,18 +179,18 @@ export default function ProjectsPage() {
         status: "On Going",
       });
       setIsAddModalOpen(false);
-      setToastMessage("Proyek baru berhasil disimpan ke database Neon!");
+      setToastMessage("New project saved to Neon database successfully!");
       fetchProjects();
       setTimeout(() => setToastMessage(null), 4000);
     } else {
-      setFormError(res.error || "Gagal menambahkan proyek ke database.");
+      setFormError(res.error || "Failed to add project to database.");
     }
   };
 
   // Export CSV
   const handleExportCSV = () => {
     if (projects.length === 0) return;
-    const headers = ["ID", "Nama Proyek", "Klien", "Tanggal Mulai", "Target Selesai", "Status"];
+    const headers = ["ID", "Project Name", "Client", "Start Date", "Target Completion", "Status"];
     const rows = projects.map((p) => [
       p.project_id,
       `"${p.project_name.replace(/"/g, '""')}"`,
@@ -234,7 +234,7 @@ export default function ProjectsPage() {
         <div>
           <div className="flex items-center gap-2.5">
             <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-              Proyek Photogrammetry &amp; Pemetaan
+              Photogrammetry &amp; Mapping Projects
             </h1>
             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -242,7 +242,7 @@ export default function ProjectsPage() {
             </span>
           </div>
           <p className="text-sm text-slate-500 mt-1">
-            Pantau status pengerjaan, klien, alur stage-gate, dan jadwal proyek STI.
+            Monitor progress status, clients, stage-gate workflows, and STI project schedules.
           </p>
         </div>
 
@@ -250,7 +250,7 @@ export default function ProjectsPage() {
           <button
             type="button"
             onClick={fetchProjects}
-            title="Muat Ulang Data"
+            title="Refresh Data"
             disabled={isLoading}
             className="p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition-colors disabled:opacity-50"
           >
@@ -264,10 +264,10 @@ export default function ProjectsPage() {
             className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 transition-colors disabled:opacity-50"
           >
             <Download className="w-4 h-4 text-slate-500" />
-            Ekspor CSV
+            Export CSV
           </button>
 
-          {/* Tombol Tambah Proyek */}
+          {/* Add Project Button */}
           <button
             type="button"
             onClick={() => {
@@ -277,7 +277,7 @@ export default function ProjectsPage() {
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-[#004b87] hover:bg-[#003966] text-white shadow-sm transition-colors cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            Tambah Proyek
+            Add Project
           </button>
         </div>
       </div>
@@ -292,11 +292,11 @@ export default function ProjectsPage() {
 
       {/* Metric Cards Section */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        {/* Card 1: Total Proyek */}
+        {/* Card 1: Total Projects */}
         <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Total Proyek
+              Total Projects
             </span>
             <div className="p-2 rounded-xl bg-slate-100 text-slate-700">
               <FolderKanban className="w-4 h-4" />
@@ -307,7 +307,7 @@ export default function ProjectsPage() {
               {isLoading ? "-" : totalProjects}
             </span>
             <span className="text-xs font-semibold text-slate-600 bg-slate-100 px-2.5 py-0.5 rounded-full">
-              Tabel project
+              Project Table
             </span>
           </div>
         </div>
@@ -327,7 +327,7 @@ export default function ProjectsPage() {
               {isLoading ? "-" : onGoingCount}
             </span>
             <span className="text-xs font-semibold text-sky-700 bg-sky-50 px-2.5 py-0.5 rounded-full border border-sky-100">
-              Berjalan
+              In Progress
             </span>
           </div>
         </div>
@@ -347,16 +347,16 @@ export default function ProjectsPage() {
               {isLoading ? "-" : finishedCount}
             </span>
             <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-100">
-              Selesai
+              Completed
             </span>
           </div>
         </div>
 
-        {/* Card 4: Klien Terdaftar */}
+        {/* Card 4: Registered Clients */}
         <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Jumlah Klien
+              Total Clients
             </span>
             <div className="p-2 rounded-xl bg-slate-100 text-slate-700">
               <Building2 className="w-4 h-4" />
@@ -367,7 +367,7 @@ export default function ProjectsPage() {
               {isLoading ? "-" : uniqueClientsCount}
             </span>
             <span className="text-xs font-semibold text-slate-600 bg-slate-100 px-2.5 py-0.5 rounded-full">
-              Instansi / Mitra
+              Organizations / Partners
             </span>
           </div>
         </div>
@@ -384,16 +384,16 @@ export default function ProjectsPage() {
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Cari nama proyek, ID, atau klien..."
+              placeholder="Search project name, ID, or client..."
               className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#004b87] focus:ring-1 focus:ring-[#004b87]/20 transition-all"
             />
           </div>
 
-          {/* Status Tabs sesuai Enum: ALL, On Going, Finished, added */}
+          {/* Status Tabs */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
             <SlidersHorizontal className="w-3.5 h-3.5 text-slate-400 mr-1 hidden sm:block" />
             {[
-              { key: "ALL", label: "Semua Status" },
+              { key: "ALL", label: "All Statuses" },
               { key: "On Going", label: "On Going" },
               { key: "Finished", label: "Finished" },
               { key: "added", label: "Added" },
@@ -420,12 +420,12 @@ export default function ProjectsPage() {
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50/80 text-xs font-bold text-slate-500 uppercase tracking-wider">
                 <th className="py-3.5 px-4 w-12 text-center">No</th>
-                <th className="py-3.5 px-4 sm:px-6">Detail Proyek</th>
-                <th className="py-3.5 px-4 sm:px-6">Klien (client)</th>
-                <th className="py-3.5 px-4 sm:px-6">Tanggal Mulai (start_date)</th>
-                <th className="py-3.5 px-4 sm:px-6">Target Selesai (end_date)</th>
+                <th className="py-3.5 px-4 sm:px-6">Project Details</th>
+                <th className="py-3.5 px-4 sm:px-6">Client</th>
+                <th className="py-3.5 px-4 sm:px-6">Start Date</th>
+                <th className="py-3.5 px-4 sm:px-6">Target Completion</th>
                 <th className="py-3.5 px-4 sm:px-6 text-center">Status</th>
-                <th className="py-3.5 px-4 sm:px-6 text-center w-28">Aksi</th>
+                <th className="py-3.5 px-4 sm:px-6 text-center w-28">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-sm">
@@ -433,7 +433,7 @@ export default function ProjectsPage() {
                 <tr>
                   <td colSpan={7} className="py-14 text-center text-slate-400">
                     <Loader2 className="w-6 h-6 mx-auto animate-spin text-[#004b87] mb-2" />
-                    <p className="text-xs font-semibold">Memuat daftar proyek dari database...</p>
+                    <p className="text-xs font-semibold">Loading project list from database...</p>
                   </td>
                 </tr>
               ) : filteredProjects.length > 0 ? (
@@ -460,7 +460,7 @@ export default function ProjectsPage() {
                       </div>
                     </td>
 
-                    {/* Klien */}
+                    {/* Client */}
                     <td className="py-3.5 px-4 sm:px-6">
                       <span className="text-xs font-semibold text-slate-800 flex items-center gap-1.5">
                         <Building2 className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
@@ -468,12 +468,12 @@ export default function ProjectsPage() {
                       </span>
                     </td>
 
-                    {/* Tanggal Mulai */}
+                    {/* Start Date */}
                     <td className="py-3.5 px-4 sm:px-6 text-xs text-slate-600 font-mono">
                       {formatDisplayDate(project.start_date)}
                     </td>
 
-                    {/* Target Selesai */}
+                    {/* Target Completion */}
                     <td className="py-3.5 px-4 sm:px-6 text-xs text-slate-600 font-mono">
                       {formatDisplayDate(project.end_date)}
                     </td>
@@ -483,7 +483,7 @@ export default function ProjectsPage() {
                       {renderStatusBadge(project.status)}
                     </td>
 
-                    {/* Aksi */}
+                    {/* Action */}
                     <td className="py-3.5 px-4 sm:px-6 text-center">
                       <button
                         type="button"
@@ -493,7 +493,7 @@ export default function ProjectsPage() {
                         }}
                         className="inline-flex items-center justify-center gap-1 px-3 py-1.5 text-xs font-bold text-[#004b87] bg-[#004b87]/10 hover:bg-[#004b87] hover:text-white border border-[#004b87]/20 rounded-lg transition-all"
                       >
-                        Detail
+                        Details
                         <ChevronRight className="w-3.5 h-3.5" />
                       </button>
                     </td>
@@ -504,10 +504,10 @@ export default function ProjectsPage() {
                   <td colSpan={7} className="py-14 text-center text-slate-400">
                     <FolderKanban className="w-10 h-10 mx-auto mb-2 text-slate-300" />
                     <p className="text-sm font-semibold text-slate-700">
-                      Tidak Ada Proyek Ditemukan
+                      No Projects Found
                     </p>
                     <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-                      Belum ada proyek yang sesuai dengan kriteria pencarian atau tabel database masih kosong.
+                      No projects match your search criteria or the database table is empty.
                     </p>
                     <button
                       type="button"
@@ -518,7 +518,7 @@ export default function ProjectsPage() {
                       className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-[#004b87] hover:bg-[#003966] text-white shadow-sm transition-colors"
                     >
                       <Plus className="w-4 h-4" />
-                      Tambah Proyek Pertama
+                      Add First Project
                     </button>
                   </td>
                 </tr>
@@ -530,16 +530,16 @@ export default function ProjectsPage() {
         {/* Footer Bar */}
         <div className="p-3.5 border-t border-slate-200 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2">
           <span>
-            Menampilkan <strong>{filteredProjects.length}</strong> dari{" "}
-            <strong>{totalProjects}</strong> total proyek
+            Showing <strong>{filteredProjects.length}</strong> of{" "}
+            <strong>{totalProjects}</strong> total projects
           </span>
           <span className="font-medium text-slate-600">
-            Tersinkronisasi dengan Tabel <strong>public.project</strong> (PostgreSQL Neon)
+            Synchronized with <strong>public.project</strong> table (Neon PostgreSQL)
           </span>
         </div>
       </div>
 
-      {/* MODAL TAMBAH PROYEK (Disesuaikan dengan Struktur Tabel public.project) */}
+      {/* ADD PROJECT MODAL */}
       {isAddModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div
@@ -550,10 +550,10 @@ export default function ProjectsPage() {
             <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/75">
               <div>
                 <span className="text-[10px] font-bold text-[#004b87] uppercase tracking-wider">
-                  PostgreSQL Neon • public.project
+                  Neon PostgreSQL • public.project
                 </span>
                 <h3 className="text-base font-bold text-slate-900">
-                  Tambah Proyek Baru
+                  Add New Project
                 </h3>
               </div>
               <button
@@ -574,15 +574,15 @@ export default function ProjectsPage() {
                 </div>
               )}
 
-              {/* 1. Nama Proyek (project_name TEXT) */}
+              {/* 1. Project Name */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Nama Proyek (project_name) <span className="text-rose-500">*</span>
+                  Project Name (project_name) <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="Contoh: Pemetaan Topografi & LiDAR Kawasan Inti IKN"
+                  placeholder="e.g., Topographical & LiDAR Mapping for IKN Core Area"
                   value={formData.project_name}
                   onChange={(e) =>
                     setFormData({ ...formData, project_name: e.target.value })
@@ -591,15 +591,15 @@ export default function ProjectsPage() {
                 />
               </div>
 
-              {/* 2. Klien / Instansi (client TEXT) */}
+              {/* 2. Client */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Klien / Instansi (client) <span className="text-rose-500">*</span>
+                  Client / Organization (client) <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="Contoh: Otorita Ibu Kota Nusantara / PT Sinar Mas"
+                  placeholder="e.g., Nusantara Capital City Authority / PT Sinar Mas"
                   value={formData.client}
                   onChange={(e) =>
                     setFormData({ ...formData, client: e.target.value })
@@ -608,11 +608,11 @@ export default function ProjectsPage() {
                 />
               </div>
 
-              {/* 3. Dates Grid: start_date & end_date (DATE) */}
+              {/* 3. Dates Grid: start_date & end_date */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                    Tanggal Mulai (start_date)
+                    Start Date (start_date)
                   </label>
                   <input
                     type="date"
@@ -626,7 +626,7 @@ export default function ProjectsPage() {
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                    Target Selesai (end_date)
+                    Target Completion (end_date)
                   </label>
                   <input
                     type="date"
@@ -639,10 +639,10 @@ export default function ProjectsPage() {
                 </div>
               </div>
 
-              {/* 4. Status Proyek (status enum: 'On Going' | 'Finished' | 'added') */}
+              {/* 4. Status Proyek */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Status Proyek (status) <span className="text-rose-500">*</span>
+                  Project Status (status) <span className="text-rose-500">*</span>
                 </label>
                 <select
                   value={formData.status}
@@ -654,12 +654,12 @@ export default function ProjectsPage() {
                   }
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-900 bg-white focus:border-[#004b87] focus:ring-2 focus:ring-[#004b87]/10 focus:outline-none transition-all font-medium"
                 >
-                  <option value="On Going">On Going (Sedang Berjalan)</option>
-                  <option value="Finished">Finished (Selesai)</option>
-                  <option value="added">added (Baru Ditambahkan)</option>
+                  <option value="On Going">On Going (In Progress)</option>
+                  <option value="Finished">Finished (Completed)</option>
+                  <option value="added">added (Newly Added)</option>
                 </select>
                 <p className="text-[11px] text-slate-400 mt-1">
-                  Pilihan disesuaikan dengan tipe enum database PostgreSQL: <code>status</code>.
+                  Options correspond to PostgreSQL database enum: <code>status</code>.
                 </p>
               </div>
 
@@ -671,7 +671,7 @@ export default function ProjectsPage() {
                   onClick={() => setIsAddModalOpen(false)}
                   className="px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors disabled:opacity-50"
                 >
-                  Batal
+                  Cancel
                 </button>
                 <button
                   type="submit"
@@ -681,12 +681,12 @@ export default function ProjectsPage() {
                   {isSubmitting ? (
                     <>
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      Menyimpan...
+                      Saving...
                     </>
                   ) : (
                     <>
                       <Plus className="w-3.5 h-3.5" />
-                      Simpan Proyek
+                      Save Project
                     </>
                   )}
                 </button>

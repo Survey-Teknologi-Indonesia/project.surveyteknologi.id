@@ -88,7 +88,7 @@ export default function DashboardNavbar({
         <button
           type="button"
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          aria-label="Buka menu navigasi"
+          aria-label="Open navigation menu"
           className="inline-flex lg:hidden items-center justify-center rounded-xl p-2 text-slate-600 hover:bg-slate-100 border border-slate-200 transition-colors focus:outline-none"
         >
           {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -116,7 +116,7 @@ export default function DashboardNavbar({
           </div>
         </Link>
 
-        {/* Desktop Navigation Links (Pengganti Sidebar) */}
+        {/* Desktop Navigation Links */}
         <nav className="hidden lg:flex items-center gap-1.5">
           {navLinks.map((item) => {
             const Icon = item.icon;
@@ -151,7 +151,7 @@ export default function DashboardNavbar({
             type="text"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Cari proyek atau dokumen..."
+            placeholder="Search projects or documents..."
             className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-9 pr-8 text-xs text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400/20 transition-all"
           />
           {searchQuery ? (
@@ -179,7 +179,7 @@ export default function DashboardNavbar({
               setIsNotificationsOpen(!isNotificationsOpen);
               setIsProfileOpen(false);
             }}
-            aria-label="Notifikasi"
+            aria-label="Notifications"
             className="relative rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-all focus:outline-none cursor-pointer"
           >
             <Bell className="h-4 w-4" />
@@ -194,26 +194,26 @@ export default function DashboardNavbar({
             <div className="absolute right-0 mt-3 w-80 rounded-2xl border border-slate-200 bg-white shadow-xl p-4 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900">
-                  Notifikasi Sistem
+                  System Notifications
                 </h4>
                 <span className="text-[10px] font-semibold bg-zinc-100 text-zinc-800 px-2 py-0.5 rounded-full">
-                  3 Baru
+                  3 New
                 </span>
               </div>
               <div className="mt-3 space-y-2 text-xs">
                 <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 hover:border-zinc-300 transition-colors">
                   <div className="flex items-center justify-between">
-                    <p className="font-semibold text-slate-900">Flight Plan Disetujui</p>
-                    <span className="text-[10px] text-slate-400">5m lalu</span>
+                    <p className="font-semibold text-slate-900">Flight Plan Approved</p>
+                    <span className="text-[10px] text-slate-400">5m ago</span>
                   </div>
-                  <p className="text-slate-500 text-[11px] mt-0.5">Gate 1 Proyek IKN telah disetujui oleh Verifikator.</p>
+                  <p className="text-slate-500 text-[11px] mt-0.5">Gate 1 for IKN Project has been approved by the Verifier.</p>
                 </div>
                 <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 hover:border-zinc-300 transition-colors">
                   <div className="flex items-center justify-between">
-                    <p className="font-semibold text-slate-900">Upload Data Baru</p>
-                    <span className="text-[10px] text-slate-400">1j lalu</span>
+                    <p className="font-semibold text-slate-900">New Data Upload</p>
+                    <span className="text-[10px] text-slate-400">1h ago</span>
                   </div>
-                  <p className="text-slate-500 text-[11px] mt-0.5">Oliver mengunggah data mentah area Sawit.</p>
+                  <p className="text-slate-500 text-[11px] mt-0.5">Oliver uploaded raw data for the Palm area.</p>
                 </div>
               </div>
             </div>
@@ -261,7 +261,7 @@ export default function DashboardNavbar({
                   className="flex items-center gap-2.5 px-3 py-2 text-xs rounded-xl text-slate-700 hover:bg-slate-100 hover:text-slate-950 transition-colors"
                 >
                   <User className="h-3.5 w-3.5 text-zinc-600" />
-                  <span>Profil Saya</span>
+                  <span>My Profile</span>
                 </Link>
                 <Link
                   href="/dashboard/settings"
@@ -269,7 +269,7 @@ export default function DashboardNavbar({
                   className="flex items-center gap-2.5 px-3 py-2 text-xs rounded-xl text-slate-700 hover:bg-slate-100 hover:text-slate-950 transition-colors"
                 >
                   <Settings className="h-3.5 w-3.5 text-zinc-600" />
-                  <span>Pengaturan</span>
+                  <span>Settings</span>
                 </Link>
                 <button
                   type="button"
@@ -277,7 +277,7 @@ export default function DashboardNavbar({
                   className="flex w-full items-center gap-2.5 px-3 py-2 text-xs rounded-xl text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
                 >
                   <LogOut className="h-3.5 w-3.5" />
-                  <span>Keluar / Logout</span>
+                  <span>Sign Out</span>
                 </button>
               </div>
             </div>
@@ -285,7 +285,7 @@ export default function DashboardNavbar({
         </div>
       </div>
 
-      {/* MOBILE DROPDOWN MENU (Muncul saat tombol hamburger diklik di layar kecil) */}
+      {/* MOBILE DROPDOWN MENU */}
       {isMobileMenuOpen && (
         <div className="absolute top-20 left-0 w-full bg-white border-b border-slate-200 shadow-xl p-4 lg:hidden z-50 animate-in slide-in-from-top-2 duration-200">
           <div className="space-y-1 mb-4 pb-4 border-b border-slate-100">
@@ -311,7 +311,7 @@ export default function DashboardNavbar({
             })}
           </div>
 
-          {/* Search bar khusus mobile */}
+          {/* Search bar for mobile */}
           <div className="relative w-full">
             <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
               <Search className="h-3.5 w-3.5" />
@@ -320,7 +320,7 @@ export default function DashboardNavbar({
               type="text"
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
-              placeholder="Cari proyek..."
+              placeholder="Search projects..."
               className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-9 pr-4 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none"
             />
           </div>

@@ -83,15 +83,15 @@ function ListView({
       <table className="w-full text-left border-collapse">
         <thead>
           <tr className="border-b border-slate-200 bg-slate-50 text-xs font-bold text-slate-500 uppercase tracking-wider">
-            <th className="py-3.5 px-4 sm:px-6">Nama Berkas</th>
-            <th className="py-3.5 px-4 sm:px-6">Tipe</th>
-            <th className="py-3.5 px-4 sm:px-6">Ukuran</th>
+            <th className="py-3.5 px-4 sm:px-6">File Name</th>
+            <th className="py-3.5 px-4 sm:px-6">Type</th>
+            <th className="py-3.5 px-4 sm:px-6">Size</th>
             <th className="py-3.5 px-4 sm:px-6">
               <span className="flex items-center gap-1">
-                <Clock className="w-3 h-3" /> Dimodifikasi
+                <Clock className="w-3 h-3" /> Modified
               </span>
             </th>
-            <th className="py-3.5 px-4 sm:px-6 text-center">Status / Aksi</th>
+            <th className="py-3.5 px-4 sm:px-6 text-center">Status / Action</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100 text-sm">
@@ -154,14 +154,14 @@ function ListView({
                       }`}
                     >
                       <Eye className="w-3 h-3" />
-                      {isSelected ? "Terpilih" : "Lihat"}
+                      {isSelected ? "Selected" : "View"}
                     </button>
                     <a
                       href={file.webViewLink}
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={(e) => e.stopPropagation()}
-                      title="Buka berkas di Google Drive"
+                      title="Open file in Google Drive"
                       className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold text-slate-500 border border-slate-200 hover:bg-slate-100 hover:text-slate-800 transition-colors opacity-0 group-hover:opacity-100"
                     >
                       <ExternalLink className="w-3 h-3" /> Drive
@@ -207,7 +207,7 @@ function GridView({
             {/* Active selection badge */}
             {isSelected && (
               <span className="absolute top-2 right-2 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-[#004b87] text-white shadow-xs">
-                <CheckCircle2 className="w-2.5 h-2.5" /> Aktif
+                <CheckCircle2 className="w-2.5 h-2.5" /> Active
               </span>
             )}
 
@@ -258,7 +258,7 @@ function GridView({
                 onClick={(e) => e.stopPropagation()}
                 className="inline-flex items-center gap-0.5 text-[10px] font-bold text-[#004b87] px-2 py-0.5 rounded hover:bg-[#004b87]/10 transition-colors"
               >
-                <ExternalLink className="w-2.5 h-2.5" /> Buka Drive
+                <ExternalLink className="w-2.5 h-2.5" /> Open Drive
               </a>
             </div>
           </div>
@@ -297,13 +297,13 @@ export default function DriveFileBrowser({
       <div className="p-5 border-b border-slate-200 bg-slate-50/50 flex items-center justify-between gap-3">
         <div>
           <h2 className="text-base font-bold text-slate-900">
-            Isi Folder Google Drive
+            Google Drive Folder Contents
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Klik berkas untuk menampilkan pratinjau di peta spasial KML.
+            Click a file to display preview on the KML spatial map.
             {hasFiles && (
               <span className="ml-1 font-semibold text-emerald-600">
-                · {totalFiles} berkas ditemukan
+                · {totalFiles} files found
               </span>
             )}
           </p>
@@ -315,7 +315,7 @@ export default function DriveFileBrowser({
             <div className="flex items-center bg-slate-100 rounded-lg p-0.5 gap-0.5">
               <button
                 onClick={() => setView("list")}
-                title="Tampilan List"
+                title="List View"
                 className={`p-1.5 rounded-md transition-all ${
                   view === "list"
                     ? "bg-white shadow text-[#004b87]"
@@ -326,7 +326,7 @@ export default function DriveFileBrowser({
               </button>
               <button
                 onClick={() => setView("grid")}
-                title="Tampilan Grid"
+                title="Grid View"
                 className={`p-1.5 rounded-md transition-all ${
                   view === "grid"
                     ? "bg-white shadow text-[#004b87]"
@@ -345,7 +345,7 @@ export default function DriveFileBrowser({
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-[#004b87] border border-[#004b87]/20 rounded-lg hover:bg-[#004b87]/5 transition-colors"
           >
             <ExternalLink className="w-3.5 h-3.5" />
-            Buka Drive
+            Open Drive
           </a>
         </div>
       </div>
@@ -355,11 +355,10 @@ export default function DriveFileBrowser({
         <div className="flex flex-col items-center gap-2 py-14 text-center">
           <Search className="w-8 h-8 text-slate-300" />
           <p className="text-sm font-semibold text-slate-500">
-            Folder Google Drive kosong atau tidak dapat diakses
+            Google Drive folder is empty or cannot be accessed
           </p>
           <p className="text-xs text-slate-400 max-w-xs">
-            Pastikan folder bersifat publik atau API Key memiliki akses yang
-            diperlukan.
+            Ensure the folder is public or the API Key has the required permissions.
           </p>
         </div>
       )}

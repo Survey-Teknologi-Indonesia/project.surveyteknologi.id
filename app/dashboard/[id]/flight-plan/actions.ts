@@ -455,20 +455,20 @@ export async function getFlightPlanPageData(projectId: string): Promise<{
   error?: string;
 }> {
   try {
-    // 1. Ambil info step Gate 6 (Orthophoto)
+    // 1. Fetch step info Gate 1 (Flight Plan)
     const stepRes = await pool.query(
       "SELECT step_id, TRIM(step_name) AS step_name, step_number FROM step WHERE step_number = 1"
     );
     if (stepRes.rows.length === 0) {
-      return { success: false, error: "Tahapan Gate 1 (Flight Plan) tidak ditemukan di database." };
+      return { success: false, error: "Gate 1 (Flight Plan) stage not found in database." };
     }
     const stepId = stepRes.rows[0].step_id;
     const gateTitle = stepRes.rows[0].step_name;
 
-    // 2. Resolve project (dengan auto-fallback jika ID dummy)
+    // 2. Resolve project
     let isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(projectId);
     let resolvedProjectId = projectId;
-    let projectName = "Proyek Pemetaan";
+    let projectName = "Mapping Project";
     let client = "-";
 
     if (!isUUID) {
@@ -492,7 +492,7 @@ export async function getFlightPlanPageData(projectId: string): Promise<{
       }
     }
 
-    // 3. Ambil data progress Gate 5 dari database
+    // 3. Fetch progress for Gate 1
     let progressRow: any = null;
     if (isUUID) {
       const progRes = await pool.query(
@@ -518,7 +518,7 @@ export async function getFlightPlanPageData(projectId: string): Promise<{
       }
     }
 
-    // Tentukan status
+    // Determine status
     let status: RawDataPageData["status"] = "NOT_UPLOADED";
     if (progressRow) {
       if (progressRow.approvedBy) {
@@ -534,7 +534,7 @@ export async function getFlightPlanPageData(projectId: string): Promise<{
     let files: DriveFileItem[] = [];
     let driveError: string | undefined = undefined;
 
-    // 4. Ambil data berkas via Google Drive API (Mendukung Folder maupun File Tunggal .jpg/.tif)
+    // 4. Fetch files via Google Drive API
     if (driveLink && process.env.GOOGLE_DRIVE_API_KEY) {
       const driveInfo = extractDriveId(driveLink);
       if (driveInfo) {
@@ -567,7 +567,7 @@ export async function getFlightPlanPageData(projectId: string): Promise<{
                 size: size,
                 formattedSize: formatBytes(size),
                 modifiedTime: f.modifiedTime
-                  ? new Date(f.modifiedTime).toLocaleDateString("id-ID", {
+                  ? new Date(f.modifiedTime).toLocaleDateString("en-US", {
                       day: "2-digit",
                       month: "short",
                       year: "numeric",
@@ -583,7 +583,6 @@ export async function getFlightPlanPageData(projectId: string): Promise<{
               };
             });
           } else {
-            // Jika link adalah berkas tunggal (seperti .jpg / .tif)
             const fileRes = await drive.files.get({
               fileId: driveInfo.id,
               fields:
@@ -604,7 +603,7 @@ export async function getFlightPlanPageData(projectId: string): Promise<{
                 size: size,
                 formattedSize: formatBytes(size),
                 modifiedTime: f.modifiedTime
-                  ? new Date(f.modifiedTime).toLocaleDateString("id-ID", {
+                  ? new Date(f.modifiedTime).toLocaleDateString("en-US", {
                       day: "2-digit",
                       month: "short",
                       year: "numeric",
@@ -622,35 +621,35 @@ export async function getFlightPlanPageData(projectId: string): Promise<{
           }
         } catch (apiErr: any) {
           console.error("Google Drive API Error:", apiErr.message);
-          driveError = apiErr.message || "Gagal mengambil daftar file dari Google Drive API.";
+          driveError = apiErr.message || "Failed to retrieve file list from Google Drive API.";
         }
       }
     }
 
-    // 5. Hitung ringkasan statistik dan kategorisasi
+    // 5. Statistical breakdown and categorization
     const totalStorageBytes = files.reduce((acc, curr) => acc + curr.size, 0);
     const totalImages = files.filter((f) => f.isImage).length;
 
     const categoriesMap: Record<string, { count: number; bytes: number; exts: Set<string> }> = {
-      "Hasil Orthophoto / Raster": { count: 0, bytes: 0, exts: new Set() },
-      "Dokumen & Metadata SIG": { count: 0, bytes: 0, exts: new Set() },
-      "Berkas Lainnya": { count: 0, bytes: 0, exts: new Set() },
+      "Orthophoto / Raster Results": { count: 0, bytes: 0, exts: new Set() },
+      "GIS Documents & Metadata": { count: 0, bytes: 0, exts: new Set() },
+      "Other Files": { count: 0, bytes: 0, exts: new Set() },
     };
 
     files.forEach((f) => {
       const ext = f.extension;
       if (f.isImage || ["TIF", "TIFF", "ECW", "JP2"].includes(ext)) {
-        categoriesMap["Hasil Orthophoto / Raster"].count++;
-        categoriesMap["Hasil Orthophoto / Raster"].bytes += f.size;
-        categoriesMap["Hasil Orthophoto / Raster"].exts.add(ext);
+        categoriesMap["Orthophoto / Raster Results"].count++;
+        categoriesMap["Orthophoto / Raster Results"].bytes += f.size;
+        categoriesMap["Orthophoto / Raster Results"].exts.add(ext);
       } else if (["KML", "KMZ", "SHP", "GEOJSON", "PDF", "TXT", "CSV"].includes(ext)) {
-        categoriesMap["Dokumen & Metadata SIG"].count++;
-        categoriesMap["Dokumen & Metadata SIG"].bytes += f.size;
-        categoriesMap["Dokumen & Metadata SIG"].exts.add(ext);
+        categoriesMap["GIS Documents & Metadata"].count++;
+        categoriesMap["GIS Documents & Metadata"].bytes += f.size;
+        categoriesMap["GIS Documents & Metadata"].exts.add(ext);
       } else {
-        categoriesMap["Berkas Lainnya"].count++;
-        categoriesMap["Berkas Lainnya"].bytes += f.size;
-        categoriesMap["Berkas Lainnya"].exts.add(ext || "OTHER");
+        categoriesMap["Other Files"].count++;
+        categoriesMap["Other Files"].bytes += f.size;
+        categoriesMap["Other Files"].exts.add(ext || "OTHER");
       }
     });
 
@@ -669,7 +668,7 @@ export async function getFlightPlanPageData(projectId: string): Promise<{
         projectId: resolvedProjectId,
         projectName,
         client,
-        gateNumber: 5,
+        gateNumber: 1,
         gateTitle,
         status,
         uploadedBy: progressRow?.uploader_name || "Oliver",
@@ -685,15 +684,15 @@ export async function getFlightPlanPageData(projectId: string): Promise<{
       },
     };
   } catch (error: any) {
-    console.error("Gagal memuat halaman Orthophoto:", error);
+    console.error("Failed to load Flight Plan page:", error);
     return {
       success: false,
-      error: error?.message || "Gagal mengambil data dari database.",
+      error: error?.message || "Failed to fetch data from database.",
     };
   }
 }
 
-// ─── Approval Actions (Disesuaikan Nama Fungsi & Revalidation) ─────────────
+// ─── Approval Actions ─────────────
 export async function approveFlightPlanGate(
   projectId: string,
   approverId?: string
@@ -703,17 +702,17 @@ export async function approveFlightPlanGate(
   try {
     await client.query("BEGIN");
 
-    // 1. Ambil step_id untuk Gate 3 (Raw Data)
+    // 1. Get step_id for Gate 1 (Flight Plan)
     const stepRes = await client.query(
       "SELECT step_id FROM step WHERE step_number = 1"
     );
     if (stepRes.rows.length === 0) {
       await client.query("ROLLBACK");
-      return { success: false, message: "Step Gate 1 tidak ditemukan di database." };
+      return { success: false, message: "Gate 1 stage not found in database." };
     }
     const stepId = stepRes.rows[0].step_id;
 
-    // 2. Tentukan ID pengguna (account_id) yang valid
+    // 2. Validate user ID
     let validUserId = approverId;
     if (validUserId) {
       const checkUser = await client.query(
@@ -731,23 +730,23 @@ export async function approveFlightPlanGate(
         await client.query("ROLLBACK");
         return {
           success: false,
-          message: "Tidak ada akun pengguna yang terdaftar di database.",
+          message: "No registered user account found in database.",
         };
       }
       validUserId = fallbackUser.rows[0].account_id;
     }
 
-    // 3. Insert ke tabel "approval" sesuai skema (kolom: approveBy, date, remarks)
+    // 3. Insert into "approval" table
     const approvalRes = await client.query(
       `INSERT INTO approval ("approveBy", date, remarks)
        VALUES ($1, CURRENT_DATE, $2)
        RETURNING approval_id`,
-      [validUserId, "Disetujui via Dashboard Raw Data"]
+      [validUserId, "Approved via Flight Plan Dashboard"]
     );
 
     const newApprovalId = approvalRes.rows[0].approval_id;
 
-    // 4. Update tabel "progress" (kolom: approvedBy = approval_id)
+    // 4. Update "progress" table
     const progressRes = await client.query(
       `UPDATE progress
        SET "approvedBy" = $1, "rejectionBy" = NULL
@@ -759,20 +758,20 @@ export async function approveFlightPlanGate(
       await client.query("ROLLBACK");
       return {
         success: false,
-        message: "Data progress tidak ditemukan untuk disetujui.",
+        message: "Progress data not found to approve.",
       };
     }
 
     await client.query("COMMIT");
 
-    revalidatePath(`/dashboard/${projectId}/raw-data`);
-    return { success: true, message: "Raw Data berhasil disetujui!" };
+    revalidatePath(`/dashboard/${projectId}/flight-plan`);
+    return { success: true, message: "Flight Plan successfully approved!" };
   } catch (error: any) {
     await client.query("ROLLBACK");
     console.error("Approval error:", error);
     return {
       success: false,
-      message: error?.message || "Gagal menyimpan persetujuan.",
+      message: error?.message || "Failed to save approval.",
     };
   } finally {
     client.release();

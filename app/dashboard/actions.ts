@@ -141,10 +141,10 @@ export async function getDashboardData(): Promise<{ success: boolean; data?: Das
       },
     };
   } catch (error: any) {
-    console.error("Gagal memuat data dashboard:", error);
+    console.error("Failed to load dashboard data:", error);
     return {
       success: false,
-      error: error?.message || "Gagal mengambil data dari database",
+      error: error?.message || "Failed to retrieve data from database",
     };
   }
 }
@@ -158,10 +158,10 @@ export async function createProject(formData: {
 }): Promise<{ success: boolean; project?: ProjectRecord; error?: string }> {
   try {
     if (!formData.project_name?.trim()) {
-      return { success: false, error: "Nama proyek wajib diisi." };
+      return { success: false, error: "Project name is required." };
     }
     if (!formData.client?.trim()) {
-      return { success: false, error: "Nama klien wajib diisi." };
+      return { success: false, error: "Client name is required." };
     }
 
     const startDate = formData.start_date?.trim() ? formData.start_date.trim() : null;
@@ -193,10 +193,10 @@ export async function createProject(formData: {
       project: newProject,
     };
   } catch (error: any) {
-    console.error("Gagal menambah project:", error);
+    console.error("Failed to create project:", error);
     return {
       success: false,
-      error: error?.message || "Gagal menambahkan project ke database.",
+      error: error?.message || "Failed to add project to database.",
     };
   }
 }

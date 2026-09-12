@@ -27,15 +27,15 @@ function StatusBadge({ status }: { status: string }) {
       cls: "bg-emerald-50 text-emerald-700 border-emerald-200",
     },
     PENDING_APPROVAL: {
-      label: "Menunggu Persetujuan",
+      label: "Pending Verification",
       cls: "bg-amber-50 text-amber-700 border-amber-200",
     },
     REVISION_NEEDED: {
-      label: "Perlu Revisi",
+      label: "Revision Needed",
       cls: "bg-red-50 text-red-700 border-red-200",
     },
     NOT_UPLOADED: {
-      label: "Belum Diunggah",
+      label: "Not Uploaded",
       cls: "bg-slate-100 text-slate-500 border-slate-200",
     },
   };
@@ -78,7 +78,7 @@ export default function RawDataPage({
     role: "uploader" | "verifier";
   } | null>(null);
 
-  // 1. Fetch data dari server & sync role pengguna
+  // 1. Fetch data from server & sync user role
   useEffect(() => {
     async function loadInitialData() {
       setLoading(true);
@@ -100,7 +100,7 @@ export default function RawDataPage({
         setData(result.data);
       } else {
         setError(
-          result.error ?? "Terjadi kesalahan saat mengambil data dari server.",
+          result.error ?? "An error occurred while fetching data from server.",
         );
       }
       setLoading(false);
@@ -115,7 +115,6 @@ export default function RawDataPage({
 
     setIsApproving(true);
     try {
-      // Ambil account_id sebenarnya yang tersimpan dari session/localStorage
       const storedUserId = localStorage.getItem("userId") || currentUser?.id;
 
       const res = await approveRawDataGate(data.projectId, storedUserId);
@@ -125,7 +124,7 @@ export default function RawDataPage({
         alert(res.message);
       }
     } catch (err) {
-      alert("Terjadi kesalahan saat memproses verifikasi.");
+      alert("An error occurred while verifying stage.");
     } finally {
       setIsApproving(false);
     }
@@ -136,7 +135,7 @@ export default function RawDataPage({
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-slate-500">
         <Loader2 className="w-8 h-8 animate-spin text-[#004b87]" />
         <span className="text-xs font-semibold">
-          Memuat data Raw Data (Gate 3)...
+          Loading Raw Data (Gate 3)...
         </span>
       </div>
     );
@@ -147,13 +146,13 @@ export default function RawDataPage({
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 p-8 text-center">
         <CloudOff className="w-12 h-12 text-slate-300" />
-        <h2 className="text-lg font-bold text-slate-700">Gagal Memuat Data</h2>
+        <h2 className="text-lg font-bold text-slate-700">Failed to Load Data</h2>
         <p className="text-sm text-slate-500 max-w-sm">{error}</p>
         <Link
           href={`/dashboard/${id}`}
           className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-[#004b87] hover:underline"
         >
-          <ChevronLeft className="w-4 h-4" /> Kembali ke Dashboard
+          <ChevronLeft className="w-4 h-4" /> Back to Dashboard
         </Link>
       </div>
     );
@@ -171,7 +170,7 @@ export default function RawDataPage({
             href={`/dashboard/${data.projectId}`}
             className="inline-flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-[#004b87] mb-2 transition-colors"
           >
-            <ChevronLeft className="w-4 h-4" /> Kembali ke Step
+            <ChevronLeft className="w-4 h-4" /> Back to Stages
           </Link>
           <div className="flex items-center gap-2">
             <span className="text-xs font-mono text-slate-400 font-bold">
@@ -206,27 +205,27 @@ export default function RawDataPage({
               {isApproving ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Memproses...</span>
+                  <span>Processing...</span>
                 </>
               ) : data.status === "APPROVED" ? (
                 <>
                   <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                  <span>Data Terverifikasi</span>
+                  <span>Raw Data Verified</span>
                 </>
               ) : (
-                <span>Setujui Raw Data</span>
+                <span>Approve Raw Data</span>
               )}
             </button>
           )}
         </div>
       </div>
 
-      {/* ── Ringkasan Metrik ── */}
+      {/* ── Metric Summary ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm">
           <div className="flex items-center justify-between text-slate-500">
             <span className="text-xs font-bold uppercase tracking-wider">
-              Total Kapasitas
+              Total Capacity
             </span>
             <HardDrive className="w-4 h-4 text-[#004b87]" />
           </div>
@@ -235,7 +234,7 @@ export default function RawDataPage({
           </p>
           {!hasFiles && (
             <p className="text-[11px] text-slate-400 mt-0.5">
-              Belum ada berkas
+              No files yet
             </p>
           )}
         </div>
@@ -243,15 +242,15 @@ export default function RawDataPage({
         <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm">
           <div className="flex items-center justify-between text-slate-500">
             <span className="text-xs font-bold uppercase tracking-wider">
-              Jumlah Foto Udara
+              Aerial Photo Count
             </span>
             <ImageIcon className="w-4 h-4 text-[#004b87]" />
           </div>
           <p className="text-2xl font-black text-slate-900 mt-2">
-            {hasFiles ? data.totalImages.toLocaleString("id-ID") : "–"}
+            {hasFiles ? data.totalImages.toLocaleString("en-US") : "–"}
             {hasFiles && (
               <span className="text-xs font-normal text-slate-500 ml-1">
-                Frame
+                Frames
               </span>
             )}
           </p>
@@ -260,7 +259,7 @@ export default function RawDataPage({
         <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm">
           <div className="flex items-center justify-between text-slate-500">
             <span className="text-xs font-bold uppercase tracking-wider">
-              Pengunggah Berkas
+              File Uploader
             </span>
             <FileCheck className="w-4 h-4 text-[#004b87]" />
           </div>
@@ -275,16 +274,16 @@ export default function RawDataPage({
         <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm">
           <div className="flex items-center justify-between text-slate-500">
             <span className="text-xs font-bold uppercase tracking-wider">
-              Total Berkas
+              Total Files
             </span>
             <Database className="w-4 h-4 text-emerald-600" />
           </div>
           <p className="text-2xl font-black text-slate-900 mt-2">
-            {hasFiles ? data.totalFiles.toLocaleString("id-ID") : "–"}
+            {hasFiles ? data.totalFiles.toLocaleString("en-US") : "–"}
           </p>
           {hasFiles && (
             <p className="text-[11px] text-slate-400 mt-0.5">
-              File dari Google Drive
+              Files from Google Drive
             </p>
           )}
         </div>
@@ -296,38 +295,36 @@ export default function RawDataPage({
           <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
           <div>
             <p className="text-sm font-bold text-amber-800">
-              Tidak dapat mengambil daftar berkas dari Google Drive
+              Unable to retrieve file list from Google Drive
             </p>
             <p className="text-xs text-amber-700 mt-0.5">{data.error}</p>
           </div>
         </div>
       )}
 
-      {/* ── Status: Drive tidak ada ── */}
+      {/* ── Status: Drive not linked ── */}
       {!hasDriveLink && (
         <div className="flex flex-col items-center justify-center gap-3 p-10 rounded-2xl bg-slate-50 border border-dashed border-slate-200 text-center">
           <CloudOff className="w-10 h-10 text-slate-300" />
           <p className="text-sm font-bold text-slate-500">
-            Belum ada link Google Drive yang terhubung
+            No Google Drive link connected yet
           </p>
           <p className="text-xs text-slate-400 max-w-sm">
-            Upload progress pada Gate 3 dengan link folder Google Drive untuk
-            menampilkan isi berkas secara langsung di sini.
+            Upload progress for Gate 3 with a Google Drive folder link to view files directly here.
           </p>
         </div>
       )}
 
-      {/* ── Ringkasan Kategori Berkas (dari Drive) ── */}
+      {/* ── Drive File Category Summary ── */}
       {hasFiles && data.categories && data.categories.length > 0 && (
         <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
           <div className="p-5 border-b border-slate-200 bg-slate-50/50 flex items-center justify-between">
             <div>
               <h2 className="text-base font-bold text-slate-900">
-                Ringkasan Kategori Berkas Drive
+                Drive File Category Summary
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">
-                Dikelompokkan otomatis berdasarkan ekstensi file dari Google
-                Drive
+                Automatically categorized based on Google Drive file extensions
               </p>
             </div>
             <FolderArchive className="w-5 h-5 text-slate-400" />
@@ -337,10 +334,10 @@ export default function RawDataPage({
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  <th className="py-3.5 px-4 sm:px-6">Kategori</th>
+                  <th className="py-3.5 px-4 sm:px-6">Category</th>
                   <th className="py-3.5 px-4 sm:px-6">Format</th>
-                  <th className="py-3.5 px-4 sm:px-6">Jumlah File</th>
-                  <th className="py-3.5 px-4 sm:px-6">Ukuran Total</th>
+                  <th className="py-3.5 px-4 sm:px-6">File Count</th>
+                  <th className="py-3.5 px-4 sm:px-6">Total Size</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-sm">
@@ -360,7 +357,7 @@ export default function RawDataPage({
                       </div>
                     </td>
                     <td className="py-3.5 px-4 sm:px-6 font-mono text-xs text-slate-700">
-                      {cat.count.toLocaleString("id-ID")} file
+                      {cat.count.toLocaleString("en-US")} files
                     </td>
                     <td className="py-3.5 px-4 sm:px-6 font-mono text-xs text-slate-700">
                       {cat.size}
@@ -387,11 +384,10 @@ export default function RawDataPage({
         <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <h3 className="text-sm font-bold text-slate-900">
-              Akses Folder Penyimpanan Raw Data
+              Raw Data Storage Folder Access
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Seluruh berkas mentah tersimpan dalam folder Google Drive
-              terstruktur yang siap untuk diolah di Gate 4.
+              All raw files are stored in a structured Google Drive folder ready for processing in Gate 4.
             </p>
           </div>
 
@@ -402,7 +398,7 @@ export default function RawDataPage({
             className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#004b87] hover:bg-[#003763] text-white rounded-xl text-xs font-bold shadow-sm transition-all"
           >
             <FolderArchive className="w-4 h-4" />
-            <span>Buka Google Drive Raw Data</span>
+            <span>Open Raw Data Google Drive</span>
             <ExternalLink className="w-3.5 h-3.5" />
           </a>
         </div>

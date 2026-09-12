@@ -66,27 +66,26 @@ function extractDriveId(url: string): { id: string; type: "folder" | "file" } | 
 
   return null;
 }
-
-export async function getRawDataPageData(projectId: string): Promise<{
+export async function getDigitalDetectionPageData(projectId: string): Promise<{
   success: boolean;
   data?: RawDataPageData;
   error?: string;
 }> {
   try {
-    // 1. Fetch step info Gate 4 (Raw Data Enhance)
+    // 1. Ambil info step Gate 5 (Orthophoto)
     const stepRes = await pool.query(
-      "SELECT step_id, TRIM(step_name) AS step_name, step_number FROM step WHERE step_number = 4"
+      "SELECT step_id, TRIM(step_name) AS step_name, step_number FROM step WHERE step_number = 7"
     );
     if (stepRes.rows.length === 0) {
-      return { success: false, error: "Gate 4 (Raw Data Enhance) stage not found in database." };
+      return { success: false, error: "Tahapan Gate 7 (Digitation & Detection) tidak ditemukan di database." };
     }
     const stepId = stepRes.rows[0].step_id;
     const gateTitle = stepRes.rows[0].step_name;
 
-    // 2. Resolve project (with auto-fallback if dummy ID)
+    // 2. Resolve project (dengan auto-fallback jika ID dummy)
     let isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(projectId);
     let resolvedProjectId = projectId;
-    let projectName = "Mapping Project";
+    let projectName = "Proyek Pemetaan";
     let client = "-";
 
     if (!isUUID) {
@@ -110,7 +109,7 @@ export async function getRawDataPageData(projectId: string): Promise<{
       }
     }
 
-    // 3. Fetch progress for Gate 4
+    // 3. Ambil data progress Gate 5 dari database
     let progressRow: any = null;
     if (isUUID) {
       const progRes = await pool.query(
@@ -136,7 +135,7 @@ export async function getRawDataPageData(projectId: string): Promise<{
       }
     }
 
-    // Determine status
+    // Tentukan status
     let status: RawDataPageData["status"] = "NOT_UPLOADED";
     if (progressRow) {
       if (progressRow.approvedBy) {
@@ -152,7 +151,7 @@ export async function getRawDataPageData(projectId: string): Promise<{
     let files: DriveFileItem[] = [];
     let driveError: string | undefined = undefined;
 
-    // 4. Fetch files via Google Drive API
+    // 4. Ambil data berkas via Google Drive API (Mendukung Folder maupun File Tunggal .jpg/.tif)
     if (driveLink && process.env.GOOGLE_DRIVE_API_KEY) {
       const driveInfo = extractDriveId(driveLink);
       if (driveInfo) {
@@ -175,8 +174,8 @@ export async function getRawDataPageData(projectId: string): Promise<{
               const size = parseInt(f.size || "0", 10);
               const ext = f.name?.split(".").pop()?.toUpperCase() || "";
               const isImage =
-                f.mimeType?.startsWith("image/") ||
-                ["JPG", "JPEG", "PNG", "DNG", "TIFF", "TIF"].includes(ext);
+                f.mimeType?.toLowerCase().startsWith("image/") ||
+                ["JPG", "JPEG", "PNG", "DNG", "TIFF", "TIF", "WEBP"].includes(ext);
 
               return {
                 id: f.id,
@@ -185,7 +184,7 @@ export async function getRawDataPageData(projectId: string): Promise<{
                 size: size,
                 formattedSize: formatBytes(size),
                 modifiedTime: f.modifiedTime
-                  ? new Date(f.modifiedTime).toLocaleDateString("en-US", {
+                  ? new Date(f.modifiedTime).toLocaleDateString("id-ID", {
                       day: "2-digit",
                       month: "short",
                       year: "numeric",
@@ -201,6 +200,7 @@ export async function getRawDataPageData(projectId: string): Promise<{
               };
             });
           } else {
+            // Jika link adalah berkas tunggal (seperti .jpg / .tif)
             const fileRes = await drive.files.get({
               fileId: driveInfo.id,
               fields:
@@ -210,18 +210,18 @@ export async function getRawDataPageData(projectId: string): Promise<{
             const size = parseInt(f.size || "0", 10);
             const ext = f.name?.split(".").pop()?.toUpperCase() || "";
             const isImage =
-              f.mimeType?.startsWith("image/") ||
-              ["JPG", "JPEG", "PNG", "DNG", "TIFF", "TIF"].includes(ext);
+              f.mimeType?.toLowerCase().startsWith("image/") ||
+              ["JPG", "JPEG", "PNG", "DNG", "TIFF", "TIF", "WEBP"].includes(ext);
 
             files = [
               {
                 id: f.id || driveInfo.id,
-                name: f.name || "Untitled",
+                name: f.name || "Untitled File",
                 mimeType: f.mimeType || "",
                 size: size,
                 formattedSize: formatBytes(size),
                 modifiedTime: f.modifiedTime
-                  ? new Date(f.modifiedTime).toLocaleDateString("en-US", {
+                  ? new Date(f.modifiedTime).toLocaleDateString("id-ID", {
                       day: "2-digit",
                       month: "short",
                       year: "numeric",
@@ -239,40 +239,35 @@ export async function getRawDataPageData(projectId: string): Promise<{
           }
         } catch (apiErr: any) {
           console.error("Google Drive API Error:", apiErr.message);
-          driveError = apiErr.message || "Failed to retrieve file list from Google Drive API.";
+          driveError = apiErr.message || "Gagal mengambil daftar file dari Google Drive API.";
         }
       }
     }
 
-    // 5. Statistical breakdown and categorization
+    // 5. Hitung ringkasan statistik dan kategorisasi
     const totalStorageBytes = files.reduce((acc, curr) => acc + curr.size, 0);
     const totalImages = files.filter((f) => f.isImage).length;
 
     const categoriesMap: Record<string, { count: number; bytes: number; exts: Set<string> }> = {
-      "Aerial Imagery": { count: 0, bytes: 0, exts: new Set() },
-      "Sensor Telemetry & Logs": { count: 0, bytes: 0, exts: new Set() },
-      "GNSS Data & Documents": { count: 0, bytes: 0, exts: new Set() },
-      "Other Files": { count: 0, bytes: 0, exts: new Set() },
+      "Hasil Orthophoto / Raster": { count: 0, bytes: 0, exts: new Set() },
+      "Dokumen & Metadata SIG": { count: 0, bytes: 0, exts: new Set() },
+      "Berkas Lainnya": { count: 0, bytes: 0, exts: new Set() },
     };
 
     files.forEach((f) => {
       const ext = f.extension;
-      if (f.isImage) {
-        categoriesMap["Aerial Imagery"].count++;
-        categoriesMap["Aerial Imagery"].bytes += f.size;
-        categoriesMap["Aerial Imagery"].exts.add(ext);
-      } else if (["CLC", "CLI", "RBN", "RTK", "NAV", "OBS", "LAS", "LAZ"].includes(ext)) {
-        categoriesMap["Sensor Telemetry & Logs"].count++;
-        categoriesMap["Sensor Telemetry & Logs"].bytes += f.size;
-        categoriesMap["Sensor Telemetry & Logs"].exts.add(ext);
-      } else if (["CSV", "PDF", "TXT", "KML", "KMZ", "DOCX"].includes(ext)) {
-        categoriesMap["GNSS Data & Documents"].count++;
-        categoriesMap["GNSS Data & Documents"].bytes += f.size;
-        categoriesMap["GNSS Data & Documents"].exts.add(ext);
+      if (f.isImage || ["TIF", "TIFF", "ECW", "JP2"].includes(ext)) {
+        categoriesMap["Hasil Orthophoto / Raster"].count++;
+        categoriesMap["Hasil Orthophoto / Raster"].bytes += f.size;
+        categoriesMap["Hasil Orthophoto / Raster"].exts.add(ext);
+      } else if (["KML", "KMZ", "SHP", "GEOJSON", "PDF", "TXT", "CSV"].includes(ext)) {
+        categoriesMap["Dokumen & Metadata SIG"].count++;
+        categoriesMap["Dokumen & Metadata SIG"].bytes += f.size;
+        categoriesMap["Dokumen & Metadata SIG"].exts.add(ext);
       } else {
-        categoriesMap["Other Files"].count++;
-        categoriesMap["Other Files"].bytes += f.size;
-        categoriesMap["Other Files"].exts.add(ext || "OTHER");
+        categoriesMap["Berkas Lainnya"].count++;
+        categoriesMap["Berkas Lainnya"].bytes += f.size;
+        categoriesMap["Berkas Lainnya"].exts.add(ext || "OTHER");
       }
     });
 
@@ -291,7 +286,7 @@ export async function getRawDataPageData(projectId: string): Promise<{
         projectId: resolvedProjectId,
         projectName,
         client,
-        gateNumber: 4,
+        gateNumber: 5,
         gateTitle,
         status,
         uploadedBy: progressRow?.uploader_name || "Oliver",
@@ -307,16 +302,16 @@ export async function getRawDataPageData(projectId: string): Promise<{
       },
     };
   } catch (error: any) {
-    console.error("Failed to load Raw Data Enhance page:", error);
+    console.error("Gagal memuat halaman Orthophoto:", error);
     return {
       success: false,
-      error: error?.message || "Failed to fetch data from database.",
+      error: error?.message || "Gagal mengambil data dari database.",
     };
   }
 }
 
-// ─── Approval Actions ─────────────
-export async function approveRawDataGate(
+// ─── Approval Actions (Disesuaikan Nama Fungsi & Revalidation) ─────────────
+export async function approveDigitalDetectionGate(
   projectId: string,
   approverId?: string
 ): Promise<{ success: boolean; message?: string }> {
@@ -325,17 +320,17 @@ export async function approveRawDataGate(
   try {
     await client.query("BEGIN");
 
-    // 1. Get step_id for Gate 4 (Raw Data Enhance)
+    // 1. Ambil step_id untuk Gate 3 (Raw Data)
     const stepRes = await client.query(
-      "SELECT step_id FROM step WHERE step_number = 4"
+      "SELECT step_id FROM step WHERE step_number = 7"
     );
     if (stepRes.rows.length === 0) {
       await client.query("ROLLBACK");
-      return { success: false, message: "Gate 4 stage not found in database." };
+      return { success: false, message: "Step Gate 3 tidak ditemukan di database." };
     }
     const stepId = stepRes.rows[0].step_id;
 
-    // 2. Validate user ID
+    // 2. Tentukan ID pengguna (account_id) yang valid
     let validUserId = approverId;
     if (validUserId) {
       const checkUser = await client.query(
@@ -353,23 +348,23 @@ export async function approveRawDataGate(
         await client.query("ROLLBACK");
         return {
           success: false,
-          message: "No registered user account found in database.",
+          message: "Tidak ada akun pengguna yang terdaftar di database.",
         };
       }
       validUserId = fallbackUser.rows[0].account_id;
     }
 
-    // 3. Insert into "approval" table
+    // 3. Insert ke tabel "approval" sesuai skema (kolom: approveBy, date, remarks)
     const approvalRes = await client.query(
       `INSERT INTO approval ("approveBy", date, remarks)
        VALUES ($1, CURRENT_DATE, $2)
        RETURNING approval_id`,
-      [validUserId, "Approved via Raw Data Enhance Dashboard"]
+      [validUserId, "Disetujui via Dashboard Raw Data"]
     );
 
     const newApprovalId = approvalRes.rows[0].approval_id;
 
-    // 4. Update "progress" table
+    // 4. Update tabel "progress" (kolom: approvedBy = approval_id)
     const progressRes = await client.query(
       `UPDATE progress
        SET "approvedBy" = $1, "rejectionBy" = NULL
@@ -381,20 +376,20 @@ export async function approveRawDataGate(
       await client.query("ROLLBACK");
       return {
         success: false,
-        message: "Progress data not found to approve.",
+        message: "Data progress tidak ditemukan untuk disetujui.",
       };
     }
 
     await client.query("COMMIT");
 
-    revalidatePath(`/dashboard/${projectId}/raw-data-enhance`);
-    return { success: true, message: "Raw Data Enhancement successfully approved!" };
+    revalidatePath(`/dashboard/${projectId}/raw-data`);
+    return { success: true, message: "Raw Data berhasil disetujui!" };
   } catch (error: any) {
     await client.query("ROLLBACK");
     console.error("Approval error:", error);
     return {
       success: false,
-      message: error?.message || "Failed to save approval.",
+      message: error?.message || "Gagal menyimpan persetujuan.",
     };
   } finally {
     client.release();

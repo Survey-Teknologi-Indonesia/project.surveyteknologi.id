@@ -108,7 +108,7 @@ export async function getAccounts(): Promise<AccountOption[]> {
     const res = await pool.query("SELECT account_id, name, username, role FROM account ORDER BY name ASC");
     return res.rows;
   } catch (error) {
-    console.error("Gagal mengambil akun:", error);
+    console.error("Failed to retrieve accounts:", error);
     return [];
   }
 }
@@ -121,7 +121,7 @@ export async function getProjectStepsData(projectId: string): Promise<{
   error?: string;
 }> {
   try {
-    // 1. Ambil data dari tabel 'step' sesuai skema DB (step_id, step_name, step_number)
+    // 1. Fetch data from step table according to DB schema
     const stepQuery = await pool.query(`
       SELECT 
         step_id, 
@@ -132,7 +132,7 @@ export async function getProjectStepsData(projectId: string): Promise<{
     `);
     const dbSteps: StepRecord[] = stepQuery.rows;
 
-    // 2. Ambil informasi project jika projectId valid
+    // 2. Fetch project info
     let project: ProjectInfo | null = null;
     let isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(projectId);
     let resolvedProjectId = projectId;
@@ -165,10 +165,10 @@ export async function getProjectStepsData(projectId: string): Promise<{
       }
     }
 
-    // 3. Ambil data akun untuk opsi uploader
+    // 3. Fetch accounts
     const accounts = await getAccounts();
 
-    // 4. Ambil data progress untuk project ini sesuai kolom riil pada tabel 'progress'
+    // 4. Fetch progress data
     let progressMap = new Map<string, any>();
     if (isUUID) {
       const progressQuery = await pool.query(
@@ -194,14 +194,14 @@ export async function getProjectStepsData(projectId: string): Promise<{
       }
     }
 
-    // 5. Susun daftar steps dengan status dinamis
-    let previousStepApproved = true; // Gate 1 terbuka secara default
+    // 5. Structure steps
+    let previousStepApproved = true;
     const steps: StepProgressItem[] = dbSteps.map((s) => {
       const meta = STEP_METADATA[s.step_number] || {
         href: s.step_name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
         subtitle: "SOP Quality Gate",
-        description: "Alur tahapan operasional photogrammetry & pemetaan.",
-        output: "Dokumen & Data Hasil Tahapan",
+        description: "Operational photogrammetry & mapping workflow stage.",
+        output: "Stage Deliverables & Documentation",
       };
 
       const progress = progressMap.get(s.step_id);
@@ -274,12 +274,12 @@ export async function getProjectStepsData(projectId: string): Promise<{
       accounts,
     };
   } catch (error: any) {
-    console.error("Gagal mengambil data steps:", error);
+    console.error("Failed to retrieve step data:", error);
     return {
       success: false,
       steps: [],
       accounts: [],
-      error: error?.message || "Gagal mengambil data steps dari database",
+      error: error?.message || "Failed to retrieve step data from database",
     };
   }
 }
@@ -301,21 +301,21 @@ export async function submitStepProgress(params: {
       if (fallbackProj.rows.length > 0) {
         targetProjectId = fallbackProj.rows[0].project_id;
       } else {
-        return { success: false, error: "ID proyek tidak valid dalam database." };
+        return { success: false, error: "Invalid project ID in database." };
       }
     }
 
     if (!params.documentLink?.trim()) {
-      return { success: false, error: "Link dokumen wajib diisi." };
+      return { success: false, error: "Document link is required." };
     }
 
     if (!params.uploadBy) {
-      return { success: false, error: "Pengunggah (upload_by) wajib dipilih." };
+      return { success: false, error: "Uploader (upload_by) is required." };
     }
 
     const uploadDate = params.uploadDate || new Date().toISOString().split("T")[0];
 
-    // Periksa apakah progress sudah pernah dibuat untuk step ini
+    // Check existing progress
     const existing = await pool.query(
       "SELECT progress_id FROM progress WHERE project_id = $1 AND step_id = $2",
       [targetProjectId, params.stepId]
@@ -356,7 +356,7 @@ export async function submitStepProgress(params: {
     revalidatePath(`/dashboard/${targetProjectId}`);
     return { success: true };
   } catch (error: any) {
-    console.error("Gagal submit progress step:", error);
-    return { success: false, error: error?.message || "Gagal menyimpan progres ke database." };
+    console.error("Failed to submit step progress:", error);
+    return { success: false, error: error?.message || "Failed to save progress to database." };
   }
 }

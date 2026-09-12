@@ -56,7 +56,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [userInfo, setUserInfo] = useState({
-    name: "Memuat...",
+    name: "Loading...",
     role: "User",
     initials: "--",
   });
@@ -166,7 +166,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
           {/* Menu Utama Label */}
           <div className="px-6 pt-6 pb-2">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-              {isProjectWorkspace ? "Project Menu" : "Menu Utama"}
+              {isProjectWorkspace ? "Project Menu" : "Main Menu"}
             </span>
           </div>
 
@@ -309,7 +309,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
               className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-rose-500 hover:text-rose-600 hover:bg-rose-50 transition-all duration-200 group"
             >
               <LogOut className="w-4 h-4 text-rose-500 group-hover:text-rose-600 transition-colors" />
-              <span>Logout</span>
+              <span>Sign Out</span>
             </button>
           </div>
 

@@ -82,7 +82,7 @@ export default function OverviewPage() {
       }
       setUrgentActions(result.data.urgentActions);
     } else {
-      setDbError(result.error || "Gagal menghubungkan ke database");
+      setDbError(result.error || "Failed to connect to database");
     }
     setIsLoading(false);
   };
@@ -95,11 +95,11 @@ export default function OverviewPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.project_name.trim()) {
-      setFormError("Nama proyek wajib diisi.");
+      setFormError("Project name is required.");
       return;
     }
     if (!formData.client.trim()) {
-      setFormError("Nama klien wajib diisi.");
+      setFormError("Client name is required.");
       return;
     }
 
@@ -116,7 +116,7 @@ export default function OverviewPage() {
     setIsSubmitting(false);
 
     if (res.success && res.project) {
-      // Reset form & tutup modal
+      // Reset form & close modal
       setFormData({
         project_name: "",
         client: "",
@@ -124,12 +124,12 @@ export default function OverviewPage() {
         end_date: "",
       });
       setIsModalOpen(false);
-      setToastMessage("Proyek baru berhasil ditambahkan ke database!");
+      setToastMessage("New project added to database successfully!");
       // Refresh data
       fetchData();
       setTimeout(() => setToastMessage(null), 4000);
     } else {
-      setFormError(res.error || "Gagal menyimpan proyek. Silakan coba lagi.");
+      setFormError(res.error || "Failed to save project. Please try again.");
     }
   };
 
@@ -137,7 +137,7 @@ export default function OverviewPage() {
     if (!dateStr) return "-";
     try {
       const d = new Date(dateStr);
-      return d.toLocaleDateString("id-ID", {
+      return d.toLocaleDateString("en-US", {
         day: "2-digit",
         month: "short",
         year: "numeric",
@@ -148,13 +148,13 @@ export default function OverviewPage() {
   };
 
   const getProjectStatus = (endDateStr: string | null) => {
-    if (!endDateStr) return { label: "Berjalan", color: "bg-sky-50 text-sky-700 border-sky-200" };
+    if (!endDateStr) return { label: "In Progress", color: "bg-sky-50 text-sky-700 border-sky-200" };
     const end = new Date(endDateStr);
     const now = new Date();
     if (end < now) {
-      return { label: "Selesai", color: "bg-emerald-50 text-emerald-700 border-emerald-200" };
+      return { label: "Completed", color: "bg-emerald-50 text-emerald-700 border-emerald-200" };
     }
-    return { label: "Berjalan", color: "bg-sky-50 text-sky-700 border-sky-200" };
+    return { label: "In Progress", color: "bg-sky-50 text-sky-700 border-sky-200" };
   };
 
   return (
@@ -186,7 +186,7 @@ export default function OverviewPage() {
             </span>
           </div>
           <p className="text-sm text-slate-500 mt-1">
-            Ringkasan eksekutif status operasional, pipa kerja 7-Gate, dan metrik proyek riil STI.
+            Executive summary of operational status, 7-Gate workflow pipeline, and STI project metrics.
           </p>
         </div>
 
@@ -194,7 +194,7 @@ export default function OverviewPage() {
           <button
             type="button"
             onClick={fetchData}
-            title="Muat Ulang Data"
+            title="Refresh Data"
             disabled={isLoading}
             className="p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition-colors disabled:opacity-50"
           >
@@ -206,11 +206,11 @@ export default function OverviewPage() {
             onClick={() => router.push("/dashboard/projects")}
             className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 transition-colors"
           >
-            Lihat Semua Proyek
+            View All Projects
             <ArrowUpRight className="w-3.5 h-3.5" />
           </button>
 
-          {/* Tombol Tambah Proyek sesuai instruksi */}
+          {/* Add Project Button */}
           <button
             type="button"
             onClick={() => {
@@ -220,28 +220,28 @@ export default function OverviewPage() {
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-[#004b87] hover:bg-[#003763] text-white shadow-sm transition-colors"
           >
             <Plus className="w-4 h-4" />
-            Tambah Proyek
+            Add Project
           </button>
         </div>
       </div>
 
-      {/* Database Error Banner jika terjadi error koneksi */}
+      {/* Database Error Banner */}
       {dbError && (
         <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 flex items-start gap-3">
           <AlertCircle className="w-5 h-5 text-rose-600 flex-shrink-0 mt-0.5" />
           <div className="text-xs">
-            <span className="font-bold">Koneksi Database Terkendala:</span> {dbError}
+            <span className="font-bold">Database Connection Issue:</span> {dbError}
           </div>
         </div>
       )}
 
       {/* 2. Key Metrics Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-        {/* Metric 1: Total Proyek */}
+        {/* Metric 1: Total Projects */}
         <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Total Proyek
+              Total Projects
             </span>
             <div className="p-2 rounded-xl bg-slate-100 text-slate-700">
               <FolderKanban className="w-4 h-4" />
@@ -252,16 +252,16 @@ export default function OverviewPage() {
               {isLoading ? "-" : metrics.totalProjects}
             </span>
             <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100">
-              {isLoading ? "..." : `${metrics.activeProjects} Berjalan`}
+              {isLoading ? "..." : `${metrics.activeProjects} Active`}
             </span>
           </div>
         </div>
 
-        {/* Metric 2: Selesai */}
+        {/* Metric 2: Completed */}
         <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Proyek Selesai
+              Completed Projects
             </span>
             <div className="p-2 rounded-xl bg-slate-100 text-slate-700">
               <CheckCircle2 className="w-4 h-4" />
@@ -277,11 +277,11 @@ export default function OverviewPage() {
           </div>
         </div>
 
-        {/* Metric 3: Butuh Verifikasi */}
+        {/* Metric 3: Pending Verification */}
         <div className="p-5 rounded-2xl bg-white border border-amber-200 bg-amber-50/20 shadow-sm flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-amber-700 uppercase tracking-wider">
-              Butuh Verifikasi
+              Pending Verification
             </span>
             <div className="p-2 rounded-xl bg-amber-100 text-amber-700">
               <Clock className="w-4 h-4" />
@@ -291,7 +291,7 @@ export default function OverviewPage() {
             <span className="text-3xl font-black text-amber-600">
               {isLoading ? "-" : metrics.pendingVerifications}
             </span>
-            <span className="text-xs font-semibold text-amber-700">Antrean Review</span>
+            <span className="text-xs font-semibold text-amber-700">Review Queue</span>
           </div>
         </div>
 
@@ -299,14 +299,14 @@ export default function OverviewPage() {
         <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Standar SOP
+              SOP Standards
             </span>
             <div className="p-2 rounded-xl bg-slate-100 text-slate-700">
               <Layers className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-4 flex items-baseline justify-between">
-            <span className="text-3xl font-black text-slate-900">7 Gate</span>
+            <span className="text-3xl font-black text-slate-900">7 Gates</span>
             <span className="text-xs font-semibold text-[#004b87] bg-sky-50 px-2.5 py-1 rounded-full border border-sky-100">
               Stage-Gate
             </span>
@@ -314,18 +314,18 @@ export default function OverviewPage() {
         </div>
       </div>
 
-      {/* 3. Section Tengah: Pipeline Stage-Gate & Action Center */}
+      {/* 3. Middle Section: Stage-Gate Pipeline & Action Center */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Sebaran Status Gate (8 Cols) */}
+        {/* Gate Status Distribution (8 Cols) */}
         <div className="lg:col-span-8 bg-white border border-slate-200 rounded-2xl shadow-sm p-5 sm:p-6 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
               <div>
                 <h3 className="text-base font-bold text-slate-900">
-                  Sebaran Proyek per Quality Gate (SOP 7-Stage)
+                  Project Distribution by Quality Gate (7-Stage SOP)
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Jumlah proyek aktif yang sedang diproses pada tiap tahap
+                  Number of active projects in progress across each stage
                 </p>
               </div>
               <Layers className="w-5 h-5 text-slate-400" />
@@ -339,7 +339,7 @@ export default function OverviewPage() {
                     <span className="text-slate-700 font-bold">
                       {item.gate}: <span className="font-normal text-slate-500">{item.title}</span>
                     </span>
-                    <span className="font-mono text-slate-900 font-bold">{item.count} Proyek</span>
+                    <span className="font-mono text-slate-900 font-bold">{item.count} Projects</span>
                   </div>
                   <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
                     <div
@@ -359,9 +359,9 @@ export default function OverviewPage() {
           </div>
 
           <div className="pt-4 mt-6 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-            <span>Standar SOP Photogrammetry &amp; Detection STI</span>
+            <span>STI Photogrammetry &amp; Detection SOP Standard</span>
             <span className="font-bold text-[#004b87]">
-              Total {metrics.totalProjects} Proyek Terdaftar
+              Total {metrics.totalProjects} Registered Projects
             </span>
           </div>
         </div>
@@ -372,7 +372,7 @@ export default function OverviewPage() {
             <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
               <div className="flex items-center gap-2">
                 <ShieldAlert className="w-4 h-4 text-amber-500" />
-                <h3 className="text-base font-bold text-slate-900">Pusat Perhatian</h3>
+                <h3 className="text-base font-bold text-slate-900">Action Center</h3>
               </div>
               <span className="text-[10px] font-bold uppercase bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full">
                 {urgentActions.length} Actions
@@ -412,9 +412,9 @@ export default function OverviewPage() {
               ) : (
                 <div className="py-8 text-center text-slate-400">
                   <CheckCircle2 className="w-8 h-8 mx-auto mb-2 text-emerald-400 opacity-80" />
-                  <p className="text-xs font-medium text-slate-600">Semua Berjalan Lancar</p>
+                  <p className="text-xs font-medium text-slate-600">All Running Smoothly</p>
                   <p className="text-[11px] text-slate-400 mt-0.5">
-                    Tidak ada antrean review mendesak saat ini.
+                    No urgent review requests in queue at this time.
                   </p>
                 </div>
               )}
@@ -426,19 +426,19 @@ export default function OverviewPage() {
             onClick={() => router.push("/dashboard/projects")}
             className="w-full mt-4 py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-colors flex items-center justify-center gap-1.5"
           >
-            <span>Buka Semua Proyek</span>
+            <span>Open All Projects</span>
             <ChevronRight className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
 
-      {/* 4. Ringkasan Proyek Terbaru dari Neon DB */}
+      {/* 4. Recent Projects Summary */}
       <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
         <div className="p-5 border-b border-slate-200 bg-slate-50/50 flex items-center justify-between">
           <div>
-            <h3 className="text-base font-bold text-slate-900">Proyek Aktif Utama</h3>
+            <h3 className="text-base font-bold text-slate-900">Main Active Projects</h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Data proyek terdaftar di database Neon PostgreSQL
+              Project records stored in Neon PostgreSQL database
             </p>
           </div>
           <FileCheck2 className="w-5 h-5 text-slate-400" />
@@ -448,12 +448,12 @@ export default function OverviewPage() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                <th className="py-3.5 px-4 sm:px-6">Nama Proyek</th>
-                <th className="py-3.5 px-4 sm:px-6">Klien</th>
-                <th className="py-3.5 px-4 sm:px-6">Tanggal Mulai</th>
-                <th className="py-3.5 px-4 sm:px-6">Target Selesai</th>
+                <th className="py-3.5 px-4 sm:px-6">Project Name</th>
+                <th className="py-3.5 px-4 sm:px-6">Client</th>
+                <th className="py-3.5 px-4 sm:px-6">Start Date</th>
+                <th className="py-3.5 px-4 sm:px-6">Target Completion</th>
                 <th className="py-3.5 px-4 sm:px-6 text-center">Status</th>
-                <th className="py-3.5 px-4 sm:px-6 text-center w-28">Aksi</th>
+                <th className="py-3.5 px-4 sm:px-6 text-center w-28">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-sm">
@@ -461,7 +461,7 @@ export default function OverviewPage() {
                 <tr>
                   <td colSpan={6} className="py-12 text-center text-slate-400">
                     <Loader2 className="w-6 h-6 mx-auto animate-spin text-[#004b87] mb-2" />
-                    <p className="text-xs">Memuat data proyek dari database...</p>
+                    <p className="text-xs">Loading project data from database...</p>
                   </td>
                 </tr>
               ) : projects.length > 0 ? (
@@ -473,7 +473,7 @@ export default function OverviewPage() {
                       onClick={() => router.push(`/dashboard/${project.project_id}`)}
                       className="hover:bg-slate-50/80 cursor-pointer transition-colors group"
                     >
-                      {/* Nama Proyek & ID */}
+                      {/* Project Name & ID */}
                       <td className="py-3.5 px-4 sm:px-6">
                         <div className="flex flex-col">
                           <span className="font-bold text-slate-900 group-hover:text-[#004b87] transition-colors">
@@ -485,7 +485,7 @@ export default function OverviewPage() {
                         </div>
                       </td>
 
-                      {/* Klien */}
+                      {/* Client */}
                       <td className="py-3.5 px-4 sm:px-6">
                         <div className="inline-flex items-center gap-1.5 text-xs text-slate-700 font-medium">
                           <Building2 className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
@@ -493,12 +493,12 @@ export default function OverviewPage() {
                         </div>
                       </td>
 
-                      {/* Tanggal Mulai */}
+                      {/* Start Date */}
                       <td className="py-3.5 px-4 sm:px-6 text-xs text-slate-600 font-mono">
                         {formatDisplayDate(project.start_date)}
                       </td>
 
-                      {/* Target Selesai */}
+                      {/* Target Completion */}
                       <td className="py-3.5 px-4 sm:px-6 text-xs text-slate-600 font-mono">
                         {formatDisplayDate(project.end_date)}
                       </td>
@@ -513,7 +513,7 @@ export default function OverviewPage() {
                         </span>
                       </td>
 
-                      {/* Aksi */}
+                      {/* Action */}
                       <td className="py-3.5 px-4 sm:px-6 text-center">
                         <button
                           type="button"
@@ -523,7 +523,7 @@ export default function OverviewPage() {
                           }}
                           className="inline-flex items-center justify-center gap-1 px-3 py-1.5 text-xs font-bold text-[#004b87] bg-[#004b87]/10 hover:bg-[#004b87] hover:text-white border border-[#004b87]/20 rounded-lg transition-all"
                         >
-                          Detail
+                          Details
                           <ChevronRight className="w-3.5 h-3.5" />
                         </button>
                       </td>
@@ -535,11 +535,10 @@ export default function OverviewPage() {
                   <td colSpan={6} className="py-14 text-center text-slate-400">
                     <FolderKanban className="w-10 h-10 mx-auto mb-2.5 text-slate-300" />
                     <p className="text-sm font-semibold text-slate-700">
-                      Belum Ada Proyek di Database
+                      No Projects in Database
                     </p>
                     <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-                      Tabel project di Neon PostgreSQL masih kosong. Klik tombol di bawah untuk
-                      menambahkan proyek pertama.
+                      The project table is currently empty. Click the button below to add your first project.
                     </p>
                     <button
                       type="button"
@@ -550,7 +549,7 @@ export default function OverviewPage() {
                       className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-[#004b87] hover:bg-[#003763] text-white shadow-sm transition-colors"
                     >
                       <Plus className="w-4 h-4" />
-                      Tambah Proyek Pertama
+                      Add First Project
                     </button>
                   </td>
                 </tr>
@@ -560,7 +559,7 @@ export default function OverviewPage() {
         </div>
       </div>
 
-      {/* 5. Modal Tambah Proyek (Sesuai Struktur Tabel project) */}
+      {/* 5. Add Project Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div
@@ -570,9 +569,9 @@ export default function OverviewPage() {
             {/* Modal Header */}
             <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
               <div>
-                <h3 className="text-base font-bold text-slate-900">Tambah Proyek Baru</h3>
+                <h3 className="text-base font-bold text-slate-900">Add New Project</h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Input data sesuai skema tabel project database Neon
+                  Enter project information according to database schema
                 </p>
               </div>
               <button
@@ -596,12 +595,12 @@ export default function OverviewPage() {
               {/* project_name */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Nama Proyek <span className="text-rose-500">*</span>
+                  Project Name <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="Contoh: Pemetaan Topografi & LiDAR Kawasan Inti IKN"
+                  placeholder="e.g., Topographical & LiDAR Mapping for IKN Core Area"
                   value={formData.project_name}
                   onChange={(e) =>
                     setFormData({ ...formData, project_name: e.target.value })
@@ -613,12 +612,12 @@ export default function OverviewPage() {
               {/* client */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Klien / Instansi <span className="text-rose-500">*</span>
+                  Client / Organization <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="Contoh: Otorita Ibu Kota Nusantara / PT Sinar Mas"
+                  placeholder="e.g., Nusantara Capital City Authority / PT Sinar Mas"
                   value={formData.client}
                   onChange={(e) => setFormData({ ...formData, client: e.target.value })}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-900 placeholder:text-slate-400 focus:border-[#004b87] focus:ring-2 focus:ring-[#004b87]/10 focus:outline-none transition-all"
@@ -629,7 +628,7 @@ export default function OverviewPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                    Tanggal Mulai
+                    Start Date
                   </label>
                   <div className="relative">
                     <input
@@ -645,7 +644,7 @@ export default function OverviewPage() {
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                    Target Selesai
+                    Target Completion
                   </label>
                   <div className="relative">
                     <input
@@ -668,7 +667,7 @@ export default function OverviewPage() {
                   onClick={() => setIsModalOpen(false)}
                   className="px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors disabled:opacity-50"
                 >
-                  Batal
+                  Cancel
                 </button>
                 <button
                   type="submit"
@@ -678,12 +677,12 @@ export default function OverviewPage() {
                   {isSubmitting ? (
                     <>
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      Menyimpan...
+                      Saving...
                     </>
                   ) : (
                     <>
                       <Plus className="w-3.5 h-3.5" />
-                      Simpan Proyek
+                      Save Project
                     </>
                   )}
                 </button>
