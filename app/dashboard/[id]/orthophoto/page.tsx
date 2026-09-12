@@ -245,7 +245,7 @@ export default function OrthophotoPage({
       </div>
 
       {/* ── CARD 1: PREVIEW ORTHOPHOTO (Height 60vh) ── */}
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col">
+      {/* <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col">
         <div className="p-4 border-b border-slate-200 bg-slate-50/80 flex items-center justify-between">
           <div className="flex items-center gap-2 min-w-0">
             <ImageIcon className="w-4 h-4 text-[#004b87] shrink-0" />
@@ -269,10 +269,10 @@ export default function OrthophotoPage({
               <Maximize2 className="w-3.5 h-3.5" />
             </a>
           )}
-        </div>
+        </div> */}
 
         {/* Viewport Canvas Preview 60vh */}
-        <div className="h-[60vh] w-full bg-slate-950 relative flex items-center justify-center p-4 overflow-hidden group">
+        {/* <div className="h-[60vh] w-full bg-slate-950 relative flex items-center justify-center p-4 overflow-hidden group">
           {selectedFile ? (
             <>
               {selectedFile.thumbnailLink ? (
@@ -292,10 +292,10 @@ export default function OrthophotoPage({
                     di Drive.
                   </p>
                 </div>
-              )}
+              )} */}
 
               {/* Floating Metadata Overlay */}
-              <div className="absolute bottom-4 left-4 bg-slate-900/80 backdrop-blur-md border border-white/10 p-3 rounded-xl text-white text-xs space-y-1 max-w-md shadow-lg">
+              {/* <div className="absolute bottom-4 left-4 bg-slate-900/80 backdrop-blur-md border border-white/10 p-3 rounded-xl text-white text-xs space-y-1 max-w-md shadow-lg">
                 <p className="font-bold truncate">{selectedFile.name}</p>
                 <div className="flex items-center gap-3 text-[11px] text-slate-300 font-mono">
                   <span>Size: {selectedFile.formattedSize}</span>
@@ -314,7 +314,7 @@ export default function OrthophotoPage({
             </div>
           )}
         </div>
-      </div>
+      </div> */}
 
       {/* ── Drive Error Banner ── */}
       {data.error && (
