@@ -9,6 +9,7 @@ import {
   AlertCircle,
   ExternalLink,
   ChevronLeft,
+  XCircle,
   HardDrive,
   Image as ImageIcon,
   Database,
@@ -16,7 +17,7 @@ import {
   Loader2,
 } from "lucide-react";
 
-import { getRawDataPageData, approveRawDataGate } from "./actions";
+import { getRawDataPageData, approveRawDataGate, RawDataPageData, rejectRawDataEnhanceGate } from "./actions";
 import DriveFileBrowser, { ExtBadge } from "./DriveFileBrowser";
 
 // ─── Status Badge Helper ───────────────────────────────────────────────────
@@ -71,6 +72,8 @@ export default function RawDataPage({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isApproving, setIsApproving] = useState(false);
+  const [isRejected, setIsRejected] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const [currentUser, setCurrentUser] = useState<{
     id?: string;
@@ -129,6 +132,31 @@ export default function RawDataPage({
       setIsApproving(false);
     }
   };
+
+    // 3. Handle Reject Action
+      const handleRejection = async () => {
+        if (!data || data.status === "REVISION_NEEDED" || isRejected) return;
+    
+        setIsRejected(true);
+        try {
+          const storedUserId = localStorage.getItem("userId") || currentUser?.id;
+          const res = await rejectRawDataEnhanceGate(
+            data.projectId,
+            storedUserId,
+          );
+          if (res.success) {
+            setData((prev: any) => ({ ...prev, status: "REVISION_NEEDED" }));
+            setToastMessage("Gate 1 (Flight Plan) rejected!");
+            setTimeout(() => setToastMessage(null), 4000);
+          } else {
+            alert(res.message || "Failed to reject stage.");
+          }
+        } catch (err) {
+          alert("An error occurred while verifying Flight Plan.");
+        } finally {
+          setIsRejected(false);
+        }
+      };
   // State Loading
   if (loading) {
     return (
@@ -192,30 +220,56 @@ export default function RawDataPage({
           {currentUser?.role === "uploader" ? (
             <StatusBadge status={data.status} />
           ) : (
-            <button
-              type="button"
-              onClick={handleApproval}
-              disabled={data.status === "APPROVED" || isApproving}
-              className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${
-                data.status === "APPROVED"
-                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200 cursor-not-allowed"
-                  : "bg-[#004b87] hover:bg-[#003763] text-white cursor-pointer"
-              }`}
-            >
-              {isApproving ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Processing...</span>
-                </>
-              ) : data.status === "APPROVED" ? (
-                <>
-                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                  <span>Data Verified</span>
-                </>
-              ) : (
-                <span>Approve Raw Data Enhance</span>
-              )}
-            </button>
+              <div className="flex flex-row gap-4">
+                <button
+                  type="button"
+                  onClick={handleApproval}
+                  disabled={data.status === "APPROVED" || isApproving}
+                  className={` items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${
+                    data.status === "APPROVED" 
+                      ? "bg-emerald-50 text-emerald-700 border border-emerald-200 cursor-not-allowed"
+                      : "bg-[#004b87] hover:bg-[#003763] text-white cursor-pointer"
+                  } ${data.status === "REVISION_NEEDED" ? "hidden" : "inline-flex"}`}
+                >
+                  {isApproving ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Processing...</span>
+                    </>
+                  ) : data.status === "APPROVED" ? (
+                    <>
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                      <span>Raw Data Enhance Verified</span>
+                    </>
+                  ) : (
+                    <span>Approve Raw Data Enhance</span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRejection}
+                  disabled={data.status === "REVISION_NEEDED" || isRejected}
+                  className={` items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${
+                    data.status === "REVISION_NEEDED"
+                      ? "bg-red-50 text-red-700 border border-red-200 cursor-not-allowed"
+                      : "bg-red-600 hover:bg-red-500 text-white cursor-pointer"
+                  } ${data.status === "APPROVED" ? "hidden" : "inline-flex"}`}
+                >
+                  {isRejected ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Rejecting...</span>
+                    </>
+                  ) : data.status === "REVISION_NEEDED" ? (
+                    <>
+                      <XCircle className="w-4 h-4 text-red-600" />
+                      <span>Raw Data Enhance Rejected</span>
+                    </>
+                  ) : (
+                    <span>Reject Raw Data Enhance</span>
+                  )}
+                </button>
+              </div>
           )}
         </div>
       </div>
