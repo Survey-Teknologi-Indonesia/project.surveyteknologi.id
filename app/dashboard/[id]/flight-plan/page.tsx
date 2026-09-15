@@ -18,12 +18,14 @@ import {
   FolderArchive,
   Layers,
   FileCode,
+  XCircle,
   Image as ImageIcon,
 } from "lucide-react";
 import { getCurrentUser } from "@/app/login/actions";
 import {
   getFlightPlanPageData,
   approveFlightPlanGate,
+  rejectFlightPlanGate,
   RawDataPageData,
   DriveFileItem,
 } from "./actions";
@@ -85,6 +87,7 @@ export default function FlightPlanPage({
   const [selectedFile, setSelectedFile] = useState<DriveFileItem | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isApproving, setIsApproving] = useState(false);
+  const [isRejected, setIsRejected] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -140,7 +143,10 @@ export default function FlightPlanPage({
     setIsApproving(true);
     try {
       const storedUserId = localStorage.getItem("userId") || currentUser?.id;
-      const res = await approveFlightPlanGate(flightData.projectId, storedUserId);
+      const res = await approveFlightPlanGate(
+        flightData.projectId,
+        storedUserId,
+      );
       if (res.success) {
         setFlightData((prev: any) => ({ ...prev, status: "APPROVED" }));
         setToastMessage("Gate 1 (Flight Plan) successfully approved!");
@@ -152,6 +158,29 @@ export default function FlightPlanPage({
       alert("An error occurred while verifying Flight Plan.");
     } finally {
       setIsApproving(false);
+    }
+  };
+  const handleRejection = async () => {
+    if (!flightData || flightData.status === "REVISION_NEEDED" || isRejected) return;
+
+    setIsRejected(true);
+    try {
+      const storedUserId = localStorage.getItem("userId") || currentUser?.id;
+      const res = await rejectFlightPlanGate(
+        flightData.projectId,
+        storedUserId,
+      );
+      if (res.success) {
+        setFlightData((prev: any) => ({ ...prev, status: "REVISION_NEEDED" }));
+        setToastMessage("Gate 1 (Flight Plan) rejected!");
+        setTimeout(() => setToastMessage(null), 4000);
+      } else {
+        alert(res.message || "Failed to reject stage.");
+      }
+    } catch (err) {
+      alert("An error occurred while verifying Flight Plan.");
+    } finally {
+      setIsRejected(false);
     }
   };
 
@@ -170,7 +199,9 @@ export default function FlightPlanPage({
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 p-8 text-center font-sans">
         <AlertCircle className="w-12 h-12 text-slate-300" />
-        <h2 className="text-lg font-bold text-slate-700">Failed to Load Data</h2>
+        <h2 className="text-lg font-bold text-slate-700">
+          Failed to Load Data
+        </h2>
         <p className="text-sm text-slate-500 max-w-sm">{error}</p>
         <Link
           href={`/dashboard/${id}`}
@@ -242,30 +273,56 @@ export default function FlightPlanPage({
             {currentUser?.role === "uploader" ? (
               <StatusBadge status={flightData.status} />
             ) : (
-              <button
-                type="button"
-                onClick={handleApproval}
-                disabled={flightData.status === "APPROVED" || isApproving}
-                className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${
-                  flightData.status === "APPROVED"
-                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200 cursor-not-allowed"
-                    : "bg-[#004b87] hover:bg-[#003763] text-white cursor-pointer"
-                }`}
-              >
-                {isApproving ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Processing...</span>
-                  </>
-                ) : flightData.status === "APPROVED" ? (
-                  <>
-                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                    <span>Flight Plan Verified</span>
-                  </>
-                ) : (
-                  <span>Approve Flight Plan</span>
-                )}
-              </button>
+              <div className="flex flex-row gap-4">
+                <button
+                  type="button"
+                  onClick={handleApproval}
+                  disabled={flightData.status === "APPROVED" || isApproving}
+                  className={` items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${
+                    flightData.status === "APPROVED" 
+                      ? "bg-emerald-50 text-emerald-700 border border-emerald-200 cursor-not-allowed"
+                      : "bg-[#004b87] hover:bg-[#003763] text-white cursor-pointer"
+                  } ${flightData.status === "REVISION_NEEDED" ? "hidden" : "inline-flex"}`}
+                >
+                  {isApproving ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Processing...</span>
+                    </>
+                  ) : flightData.status === "APPROVED" ? (
+                    <>
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                      <span>Flight Plan Verified</span>
+                    </>
+                  ) : (
+                    <span>Approve Flight Plan</span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRejection}
+                  disabled={flightData.status === "REVISION_NEEDED" || isRejected}
+                  className={` items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${
+                    flightData.status === "REVISION_NEEDED"
+                      ? "bg-red-50 text-red-700 border border-red-200 cursor-not-allowed"
+                      : "bg-red-600 hover:bg-red-500 text-white cursor-pointer"
+                  } ${flightData.status === "APPROVED" ? "hidden" : "inline-flex"}`}
+                >
+                  {isRejected ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Rejecting...</span>
+                    </>
+                  ) : flightData.status === "REVISION_NEEDED" ? (
+                    <>
+                      <XCircle className="w-4 h-4 text-red-600" />
+                      <span>Flight Plan Rejected</span>
+                    </>
+                  ) : (
+                    <span>Reject Flight Plan</span>
+                  )}
+                </button>
+              </div>
             )}
           </div>
         </div>
