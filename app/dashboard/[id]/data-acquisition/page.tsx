@@ -1,302 +1,346 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, use } from "react";
+import Link from "next/link";
 import {
-  Camera,
-  Calendar,
-  User,
-  MapPin,
-  Clock,
+  ArrowLeft,
+  Download,
+  ExternalLink,
+  Map,
+  Plane,
   CheckCircle2,
   AlertCircle,
-  FileText,
-  UploadCloud,
-  ExternalLink,
-  Wind,
-  Sun,
+  Loader2,
+  RefreshCw,
+  Building2,
   ShieldCheck,
-  ChevronLeft,
+  FileText,
+  FolderArchive,
+  Layers,
+  FileCode,
+  XCircle,
   Image as ImageIcon,
 } from "lucide-react";
-import Link from "next/link";
-import Image from "next/image";
+import { getCurrentUser } from "@/app/login/actions";
+import {
+  getDataAcquisitionPageData,
+  approveDataAcquisitionGate,
+  rejectDataAcquisitionGate,
+  DataAcquisitionPageData,
+  DriveFileItem,
+} from "./actions";
+import DriveFileBrowser from "./DriveFileBrowser";
+import KmlMapViewer from "@/app/componets/kmlViewer";
 
-import { useParams } from "next/navigation";
-
-export default function DataAcquisitionPage() {
-  // Mock Data Field Acquisition
-  const acquisitionData = {
-    projectCode: "STI-IKN-2026",
-    projectName: "Topographic Mapping & LiDAR in IKN Core Area",
-    gateNumber: 2,
-    gateTitle: "Data Acquisition (Aerial Data Capture)",
-    status: "APPROVED", // APPROVED | PENDING | REVISION | IN_PROGRESS
-    flightDate: "22 Jan 2026",
-    pilot: "Oliver",
-    coPilot: "Budi Santoso",
-    equipment: "Drone VTOL M300 RTK + Sensor LiDAR Zenmuse L1",
-    location: "Sepaku, Penajam Paser Utara, East Kalimantan",
-    coverageArea: "1,200 Ha (Flight Session 1-4)",
-    weatherCondition: "Clear / Wind 8 km/h (Optimal Condition)",
-    flightLogs: [
-      {
-        session: "Flight 01",
-        time: "08:30 - 09:15 WITA",
-        altitude: "150m AGL",
-        photosCount: 450,
-        batteryUsed: "2 Sets (TB60)",
-        status: "Success",
-      },
-      {
-        session: "Flight 02",
-        time: "10:00 - 10:45 WITA",
-        altitude: "150m AGL",
-        photosCount: 510,
-        batteryUsed: "2 Sets (TB60)",
-        status: "Success",
-      },
-      {
-        session: "Flight 03",
-        time: "13:30 - 14:15 WITA",
-        altitude: "150m AGL",
-        photosCount: 480,
-        batteryUsed: "2 Sets (TB60)",
-        status: "Success",
-      },
-    ],
-    deliverableLink: "https://drive.google.com/drive/folders/sti-raw-capture-ikn-2026",
-    notes:
-      "All flight grids (1-4) were successfully completed without weather obstacles. GPS base station logs and flight track KML files are fully attached.",
+// ─── Status Badge Helper ───────────────────────────────────────────────────
+function StatusBadge({ status }: { status: string }) {
+  const map: Record<string, { label: string; cls: string }> = {
+    APPROVED: {
+      label: "Data Acquisition Approved",
+      cls: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    },
+    PENDING_APPROVAL: {
+      label: "Pending Verification",
+      cls: "bg-amber-50 text-amber-700 border-amber-200",
+    },
+    REVISION_NEEDED: {
+      label: "Revision Needed",
+      cls: "bg-rose-50 text-rose-700 border-rose-200",
+    },
+    NOT_UPLOADED: {
+      label: "Not Uploaded",
+      cls: "bg-slate-100 text-slate-500 border-slate-200",
+    },
   };
 
-  const params = useParams();
-  const id = params?.id;
+  const s = map[status] ?? map["NOT_UPLOADED"];
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto p-4 sm:p-6 font-sans text-slate-800">
-      {/* Navigation & Header */}
+    <span
+      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border ${s.cls}`}
+    >
+      <span
+        className={`w-2 h-2 rounded-full ${
+          status === "APPROVED"
+            ? "bg-emerald-500"
+            : status === "PENDING_APPROVAL"
+              ? "bg-amber-500 animate-pulse"
+              : status === "REVISION_NEEDED"
+                ? "bg-rose-500"
+                : "bg-slate-400"
+        }`}
+      />
+      {s.label}
+    </span>
+  );
+}
+
+export default function DataAcquisitionPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const resolvedParams = use(params);
+  const id = resolvedParams.id;
+
+  const [flightData, setFlightData] = useState<DataAcquisitionPageData | null>(null);
+  const [selectedFile, setSelectedFile] = useState<DriveFileItem | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isApproving, setIsApproving] = useState(false);
+  const [isRejected, setIsRejected] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const [currentUser, setCurrentUser] = useState<{
+    id?: string;
+    name: string;
+    role: "uploader" | "verifier";
+  } | null>(null);
+
+  // Load data from Server Action
+  const loadData = async () => {
+    setIsLoading(true);
+    setError(null);
+
+    // Sync user role from localStorage / Auth
+    const level = localStorage.getItem("userLevel")?.toLowerCase();
+    const name = localStorage.getItem("userName") || "User";
+    const isVerifier =
+      level === "verifikator" || level === "verifier" || level === "admin";
+
+    setCurrentUser({
+      name: name,
+      role: isVerifier ? "verifier" : "uploader",
+    });
+
+    const res = await getDataAcquisitionPageData(id);
+    if (res.success && res.data) {
+      setFlightData(res.data);
+
+      // Select first KML file or image as default preview
+      const fetchedFiles: DriveFileItem[] = res.data.files || [];
+      const firstKmlOrImage = fetchedFiles.find(
+        (f) => f.extension === "KML" || f.extension === "KMZ" || f.isImage,
+      );
+      setSelectedFile(firstKmlOrImage || fetchedFiles[0] || null);
+    } else {
+      setError(
+        res.error ??
+          "An error occurred while fetching Data Acquisition data from database.",
+      );
+    }
+    setIsLoading(false);
+  };
+
+  useEffect(() => {
+    loadData();
+  }, [id]);
+
+  // Handle Action Approval Gate 2
+  const handleApproval = async () => {
+    if (!flightData || flightData.status === "APPROVED" || isApproving) return;
+
+    setIsApproving(true);
+    try {
+      const storedUserId = localStorage.getItem("userId") || currentUser?.id;
+      const res = await approveDataAcquisitionGate(
+        flightData.projectId,
+        storedUserId,
+      );
+      if (res.success) {
+        setFlightData((prev: any) => ({ ...prev, status: "APPROVED" }));
+        setToastMessage("Gate 2 (Data Acquisition) successfully approved!");
+        setTimeout(() => setToastMessage(null), 4000);
+      } else {
+        alert(res.message || "Failed to approve stage.");
+      }
+    } catch (err) {
+      alert("An error occurred while verifying Data Acquisition.");
+    } finally {
+      setIsApproving(false);
+    }
+  };
+  const handleRejection = async () => {
+    if (!flightData || flightData.status === "REVISION_NEEDED" || isRejected) return;
+
+    setIsRejected(true);
+    try {
+      const storedUserId = localStorage.getItem("userId") || currentUser?.id;
+      const res = await rejectDataAcquisitionGate(
+        flightData.projectId,
+        storedUserId,
+      );
+      if (res.success) {
+        setFlightData((prev: any) => ({ ...prev, status: "REVISION_NEEDED" }));
+        setToastMessage("Gate 2 (Data Acquisition) rejected!");
+        setTimeout(() => setToastMessage(null), 4000);
+      } else {
+        alert(res.message || "Failed to reject stage.");
+      }
+    } catch (err) {
+      alert("An error occurred while verifying Data Acquisition.");
+    } finally {
+      setIsRejected(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="p-16 flex flex-col items-center justify-center gap-3 text-slate-500 font-sans min-h-[60vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-[#004b87]" />
+        <p className="text-xs font-semibold">
+          Loading Data Acquisition (Gate 2)...
+        </p>
+      </div>
+    );
+  }
+
+  if (error || !flightData) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 p-8 text-center font-sans">
+        <AlertCircle className="w-12 h-12 text-slate-300" />
+        <h2 className="text-lg font-bold text-slate-700">
+          Failed to Load Data
+        </h2>
+        <p className="text-sm text-slate-500 max-w-sm">{error}</p>
+        <Link
+          href={`/dashboard/${id}`}
+          className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-[#004b87] hover:underline"
+        >
+          <ArrowLeft className="w-4 h-4" /> Back to Dashboard
+        </Link>
+      </div>
+    );
+  }
+
+  const hasFiles = flightData.files && flightData.files.length > 0;
+  const hasDriveLink = !!flightData.driveLink;
+
+  return (
+    <div className="max-w-7xl mx-auto space-y-6 p-4 sm:p-6 text-slate-800 font-sans relative">
+      {/* Toast Feedback */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3.5 rounded-xl bg-emerald-900/95 text-white border border-emerald-500 shadow-2xl backdrop-blur-md animate-in fade-in duration-300">
+          <CheckCircle2 className="w-5 h-5 text-emerald-300 flex-shrink-0" />
+          <p className="text-xs font-semibold">{toastMessage}</p>
+        </div>
+      )}
+
+      {/* 1. Header & Navigation */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
-        <div>
-          <Link
-            href={`/dashboard/${id}`}
-            className="inline-flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-[#004b87] mb-2 transition-colors"
-          >
-            <ChevronLeft className="w-4 h-4" /> Back to Stages
-          </Link>
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-mono text-slate-400 font-bold">
-              {acquisitionData.projectCode}
-            </span>
-            <span className="text-slate-300">•</span>
-            <span className="text-xs font-bold text-[#004b87] uppercase tracking-wider">
-              Gate {acquisitionData.gateNumber}
-            </span>
-          </div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight mt-1">
-            {acquisitionData.gateTitle}
-          </h1>
-        </div>
-
-        {/* Status Badge */}
         <div className="flex items-center gap-3">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border bg-emerald-50 text-emerald-700 border-emerald-200">
-            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-            Stage Approved
-          </span>
-        </div>
-      </div>
-
-      {/* Main Info Grid & Field Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Card 1: Mission Info */}
-        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-3">
-          <div className="flex items-center gap-2 text-slate-500 border-b border-slate-100 pb-2">
-            <Camera className="w-4 h-4 text-[#004b87]" />
-            <span className="text-xs font-bold uppercase tracking-wider">
-              Equipment &amp; Mission
-            </span>
-          </div>
-          <div className="text-xs space-y-2">
-            <div>
-              <p className="text-slate-400">Drone / Sensor:</p>
-              <p className="font-bold text-slate-900">{acquisitionData.equipment}</p>
-            </div>
-            <div>
-              <p className="text-slate-400">Coverage Area:</p>
-              <p className="font-bold text-slate-900">{acquisitionData.coverageArea}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Card 2: Field Team */}
-        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-3">
-          <div className="flex items-center gap-2 text-slate-500 border-b border-slate-100 pb-2">
-            <User className="w-4 h-4 text-[#004b87]" />
-            <span className="text-xs font-bold uppercase tracking-wider">
-              Field Personnel
-            </span>
-          </div>
-          <div className="text-xs space-y-2">
-            <div className="flex justify-between">
-              <span className="text-slate-400">Lead Pilot:</span>
-              <span className="font-bold text-slate-900">{acquisitionData.pilot}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">Co-Pilot / Safety:</span>
-              <span className="font-bold text-slate-900">{acquisitionData.coPilot}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">Flight Date:</span>
-              <span className="font-bold text-slate-900">{acquisitionData.flightDate}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Card 3: Field Conditions */}
-        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-3">
-          <div className="flex items-center gap-2 text-slate-500 border-b border-slate-100 pb-2">
-            <Sun className="w-4 h-4 text-amber-500" />
-            <span className="text-xs font-bold uppercase tracking-wider">
-              Field Conditions
-            </span>
-          </div>
-          <div className="text-xs space-y-2">
-            <div>
-              <p className="text-slate-400">Survey Location:</p>
-              <p className="font-bold text-slate-900 truncate">{acquisitionData.location}</p>
-            </div>
-            <div>
-              <p className="text-slate-400">Weather / Wind Speed:</p>
-              <p className="font-bold text-emerald-600">{acquisitionData.weatherCondition}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Flight Log Table */}
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-        <div className="p-5 border-b border-slate-200 bg-slate-50/50 flex items-center justify-between">
+          <Link
+            href={`/dashboard/${flightData.projectId}`}
+            className="p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 transition-colors text-slate-600"
+            title="Back to Dashboard"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </Link>
           <div>
-            <h2 className="text-base font-bold text-slate-900">
-              Field Flight Logs (Flight Sessions)
-            </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Detailed flight history of aerial imaging per session
-            </p>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#004b87]">
+                Gate 2 • Data Acquisition
+              </span>
+              <span className="text-slate-300">•</span>
+              <span className="text-xs font-mono text-slate-500">
+                ID: {flightData.projectId.slice(0, 8).toUpperCase()}
+              </span>
+            </div>
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 mt-0.5">
+              {flightData.projectName}
+            </h1>
+            {flightData.client && (
+              <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
+                <Building2 className="w-3.5 h-3.5 text-slate-400" />
+                Client: {flightData.client}
+              </p>
+            )}
           </div>
-          <Clock className="w-5 h-5 text-slate-400" />
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-slate-200 bg-slate-50 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                <th className="py-3.5 px-4 sm:px-6">Flight Session</th>
-                <th className="py-3.5 px-4 sm:px-6">Time (WITA)</th>
-                <th className="py-3.5 px-4 sm:px-6">Flight Altitude</th>
-                <th className="py-3.5 px-4 sm:px-6 text-center">Photo Count</th>
-                <th className="py-3.5 px-4 sm:px-6">Battery Used</th>
-                <th className="py-3.5 px-4 sm:px-6 text-center">Log Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-sm">
-              {acquisitionData.flightLogs.map((log, idx) => (
-                <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
-                  <td className="py-3.5 px-4 sm:px-6 font-bold text-slate-900">
-                    {log.session}
-                  </td>
-                  <td className="py-3.5 px-4 sm:px-6 text-xs text-slate-600">
-                    {log.time}
-                  </td>
-                  <td className="py-3.5 px-4 sm:px-6 text-xs font-mono text-slate-700">
-                    {log.altitude}
-                  </td>
-                  <td className="py-3.5 px-4 sm:px-6 text-center font-mono font-bold text-slate-900">
-                    {log.photosCount} Frames
-                  </td>
-                  <td className="py-3.5 px-4 sm:px-6 text-xs text-slate-600">
-                    {log.batteryUsed}
-                  </td>
-                  <td className="py-3.5 px-4 sm:px-6 text-center">
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                      <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-                      {log.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Field Activities Photo Documentation */}
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5 sm:p-6 space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-          <div className="flex items-center gap-2">
-            <ImageIcon className="w-4 h-4 text-[#004b87]" />
-            <h2 className="text-base font-bold text-slate-900">
-              Field Activities Photo Documentation
-            </h2>
-          </div>
-          <span className="text-xs text-slate-400 font-mono">4 Photos Attached</span>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((item) => (
-            <div
-              key={item}
-              className="relative aspect-video rounded-xl bg-slate-100 border border-slate-200 overflow-hidden group cursor-pointer flex items-center justify-center text-slate-400 hover:border-[#004b87] transition-all"
-            >
-              <div className="text-center p-2">
-                <Camera className="w-6 h-6 mx-auto mb-1 text-slate-400 group-hover:text-[#004b87] transition-colors" />
-                <span className="text-[10px] font-bold text-slate-500 block">
-                  Field Photo 0{item}
-                </span>
+        {/* Status Indicator & Refresh */}
+        <div className="flex items-center gap-3 self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={loadData}
+            title="Reload Data"
+            className="p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition-colors"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </button>
+          {/* Action / Status Section */}
+          <div className="flex items-center gap-3">
+            {currentUser?.role === "uploader" ? (
+              <StatusBadge status={flightData.status} />
+            ) : (
+              <div className="flex flex-row gap-4">
+                <button
+                  type="button"
+                  onClick={handleApproval}
+                  disabled={flightData.status === "APPROVED" || isApproving}
+                  className={` items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${
+                    flightData.status === "APPROVED" 
+                      ? "bg-emerald-50 text-emerald-700 border border-emerald-200 cursor-not-allowed"
+                      : "bg-[#004b87] hover:bg-[#003763] text-white cursor-pointer"
+                  } ${flightData.status === "REVISION_NEEDED" ? "hidden" : "inline-flex"}`}
+                >
+                  {isApproving ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Processing...</span>
+                    </>
+                  ) : flightData.status === "APPROVED" ? (
+                    <>
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                      <span>Data Acquisition Verified</span>
+                    </>
+                  ) : (
+                    <span>Approve Data Acquisition</span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRejection}
+                  disabled={flightData.status === "REVISION_NEEDED" || isRejected}
+                  className={` items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${
+                    flightData.status === "REVISION_NEEDED"
+                      ? "bg-red-50 text-red-700 border border-red-200 cursor-not-allowed"
+                      : "bg-red-600 hover:bg-red-500 text-white cursor-pointer"
+                  } ${flightData.status === "APPROVED" ? "hidden" : "inline-flex"}`}
+                >
+                  {isRejected ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Rejecting...</span>
+                    </>
+                  ) : flightData.status === "REVISION_NEEDED" ? (
+                    <>
+                      <XCircle className="w-4 h-4 text-red-600" />
+                      <span>Data Acquisition Rejected</span>
+                    </>
+                  ) : (
+                    <span>Reject Data Acquisition</span>
+                  )}
+                </button>
               </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Deliverable Section (Raw Data Google Drive Link) */}
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5 sm:p-6 space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-          <div className="flex items-center gap-2">
-            <FileText className="w-4 h-4 text-[#004b87]" />
-            <h2 className="text-base font-bold text-slate-900">
-              Acquisition Deliverables
-            </h2>
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          <div>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
-              Field Team Notes
-            </p>
-            <p className="text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-200 leading-relaxed">
-              {acquisitionData.notes}
-            </p>
-          </div>
-
-          <div>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
-              Raw Data Link (Raw Flight Data &amp; GPS Log)
-            </p>
-            <a
-              href={acquisitionData.deliverableLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-[#004b87] text-slate-700 hover:text-white border border-slate-200 rounded-xl text-xs font-bold transition-all group"
-            >
-              <UploadCloud className="w-4 h-4 text-[#004b87] group-hover:text-white transition-colors" />
-              <span>Open Raw Field Data in Google Drive</span>
-              <ExternalLink className="w-3.5 h-3.5" />
-            </a>
+            )}
           </div>
         </div>
       </div>
+
+      {/* 3. Shared File Browser Komponen */}
+      {hasDriveLink ? (
+        <DriveFileBrowser
+          files={flightData.files}
+          driveLink={flightData.driveLink!}
+          totalFiles={flightData.totalFiles}
+
+        />
+      ) : (
+        <div className="p-8 rounded-2xl bg-slate-50 border border-dashed border-slate-200 text-center text-xs text-slate-500">
+          No Google Drive link associated with this stage yet.
+        </div>
+      )}
     </div>
   );
 }
