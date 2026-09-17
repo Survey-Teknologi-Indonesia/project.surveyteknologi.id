@@ -9,6 +9,7 @@ import {
   ExternalLink,
   Layers,
   FileCode,
+  XCircle,
   HardDrive,
   Maximize2,
   Image as ImageIcon,
@@ -23,10 +24,12 @@ import {
 import {
   getOrthophotoPageData,
   approveOrthophotoGate,
+  rejectOrthophotoGate,
   DriveFileItem,
 } from "./actions";
 
 import DriveFileBrowser from "./DriveFileBrowser";
+import { rejectRawDataGate } from "../raw-data/actions";
 
 // ─── Status Badge Helper ───────────────────────────────────────────────────
 function StatusBadge({ status }: { status: string }) {
@@ -81,6 +84,8 @@ export default function OrthophotoPage({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isApproving, setIsApproving] = useState(false);
+  const [isRejected, setIsRejected] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const [currentUser, setCurrentUser] = useState<{
     id?: string;
@@ -147,6 +152,28 @@ export default function OrthophotoPage({
     }
   };
 
+  // 3. Handle Reject Action
+  const handleRejection = async () => {
+    if (!data || data.status === "REVISION_NEEDED" || isRejected) return;
+
+    setIsRejected(true);
+    try {
+      const storedUserId = localStorage.getItem("userId") || currentUser?.id;
+      const res = await rejectRawDataGate(data.projectId, storedUserId);
+      if (res.success) {
+        setData((prev: any) => ({ ...prev, status: "REVISION_NEEDED" }));
+        setToastMessage("Gate 1 (Flight Plan) rejected!");
+        setTimeout(() => setToastMessage(null), 4000);
+      } else {
+        alert(res.message || "Failed to reject stage.");
+      }
+    } catch (err) {
+      alert("An error occurred while verifying Flight Plan.");
+    } finally {
+      setIsRejected(false);
+    }
+  };
+
   // Utility to upgrade Google Drive thumbnail quality
   const getHighResThumbnail = (link?: string) => {
     if (!link) return null;
@@ -170,7 +197,9 @@ export default function OrthophotoPage({
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 p-8 text-center">
         <CloudOff className="w-12 h-12 text-slate-300" />
-        <h2 className="text-lg font-bold text-slate-700">Failed to Load Data</h2>
+        <h2 className="text-lg font-bold text-slate-700">
+          Failed to Load Data
+        </h2>
         <p className="text-sm text-slate-500 max-w-sm">{error}</p>
         <Link
           href={`/dashboard/${id}`}
@@ -216,30 +245,56 @@ export default function OrthophotoPage({
           {currentUser?.role === "uploader" ? (
             <StatusBadge status={data.status} />
           ) : (
-            <button
-              type="button"
-              onClick={handleApproval}
-              disabled={data.status === "APPROVED" || isApproving}
-              className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${
-                data.status === "APPROVED"
-                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200 cursor-not-allowed"
-                  : "bg-[#004b87] hover:bg-[#003763] text-white cursor-pointer"
-              }`}
-            >
-              {isApproving ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Processing...</span>
-                </>
-              ) : data.status === "APPROVED" ? (
-                <>
-                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                  <span>Orthophoto Verified</span>
-                </>
-              ) : (
-                <span>Approve Orthophoto</span>
-              )}
-            </button>
+            <div className="flex flex-row gap-4">
+              <button
+                type="button"
+                onClick={handleApproval}
+                disabled={data.status === "APPROVED" || isApproving}
+                className={` items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${
+                  data.status === "APPROVED"
+                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200 cursor-not-allowed"
+                    : "bg-[#004b87] hover:bg-[#003763] text-white cursor-pointer"
+                } ${data.status === "REVISION_NEEDED" ? "hidden" : "inline-flex"}`}
+              >
+                {isApproving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Processing...</span>
+                  </>
+                ) : data.status === "APPROVED" ? (
+                  <>
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                    <span>Flight Plan Verified</span>
+                  </>
+                ) : (
+                  <span>Approve Flight Plan</span>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={handleRejection}
+                disabled={data.status === "REVISION_NEEDED" || isRejected}
+                className={` items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${
+                  data.status === "REVISION_NEEDED"
+                    ? "bg-red-50 text-red-700 border border-red-200 cursor-not-allowed"
+                    : "bg-red-600 hover:bg-red-500 text-white cursor-pointer"
+                } ${data.status === "APPROVED" ? "hidden" : "inline-flex"}`}
+              >
+                {isRejected ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Rejecting...</span>
+                  </>
+                ) : data.status === "REVISION_NEEDED" ? (
+                  <>
+                    <XCircle className="w-4 h-4 text-red-600" />
+                    <span>Flight Plan Rejected</span>
+                  </>
+                ) : (
+                  <span>Reject Flight Plan</span>
+                )}
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -265,7 +320,8 @@ export default function OrthophotoPage({
             No Google Drive link connected yet
           </p>
           <p className="text-xs text-slate-400 max-w-sm">
-            Upload progress for Gate 5 with a Google Drive folder link to view files directly here.
+            Upload progress for Gate 5 with a Google Drive folder link to view
+            files directly here.
           </p>
         </div>
       )}
@@ -287,7 +343,8 @@ export default function OrthophotoPage({
               Orthophoto Storage Folder Access
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              All processed Orthomosaic results are stored in a structured Google Drive folder ready for download or GIS integration.
+              All processed Orthomosaic results are stored in a structured
+              Google Drive folder ready for download or GIS integration.
             </p>
           </div>
 

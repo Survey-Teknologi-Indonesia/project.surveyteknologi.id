@@ -394,3 +394,87 @@ export async function approveOrthophotoGate(
     client.release();
   }
 }
+export async function rejectOrthophotoGate(
+  projectId: string,
+  rejectorId?: string
+): Promise<{ success: boolean; message?: string }> {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    // 1. Get step_id for Gate 1 (Flight Plan)
+    const stepRes = await client.query(
+      "SELECT step_id FROM step WHERE step_number = 5"
+    );
+    if (stepRes.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return { success: false, message: "Gate 5 stage not found in database." };
+    }
+    const stepId = stepRes.rows[0].step_id;
+
+    // 2. Validate user ID
+    let validUserId = rejectorId;
+    if (validUserId) {
+      const checkUser = await client.query(
+        "SELECT account_id FROM account WHERE account_id::text = $1",
+        [validUserId]
+      );
+      if (checkUser.rows.length === 0) validUserId = undefined;
+    }
+
+    if (!validUserId) {
+      const fallbackUser = await client.query(
+        "SELECT account_id FROM account ORDER BY account_id ASC LIMIT 1"
+      );
+      if (fallbackUser.rows.length === 0) {
+        await client.query("ROLLBACK");
+        return {
+          success: false,
+          message: "No registered user account found in database.",
+        };
+      }
+      validUserId = fallbackUser.rows[0].account_id;
+    }
+
+    // 3. Insert into "rejection" table
+    const rejectionRes = await client.query(
+      `INSERT INTO rejection ("rejectBy", date, remarks)
+       VALUES ($1, CURRENT_DATE, $2)
+       RETURNING rejection_id`,
+      [validUserId, "Rejected via Flight Plan Dashboard"]
+    );
+
+    const newRejectionId = rejectionRes.rows[0].rejection_id;
+
+    // 4. Update "progress" table
+    const progressRes = await client.query(
+      `UPDATE progress
+       SET "rejectionBy" = $1, "approvedBy" = NULL
+       WHERE project_id = $2 AND step_id = $3`,
+      [newRejectionId, projectId, stepId]
+    );
+
+    if (progressRes.rowCount === 0) {
+      await client.query("ROLLBACK");
+      return {
+        success: false,
+        message: "Progress data not found to reject.",
+      };
+    }
+
+    await client.query("COMMIT");
+
+    revalidatePath(`/dashboard/${projectId}/flight-plan`);
+    return { success: true, message: "Flight Plan successfully rejected!" };
+  } catch (error: any) {
+    await client.query("ROLLBACK");
+    console.error("Approval error:", error);
+    return {
+      success: false,
+      message: error?.message || "Failed to save approval.",
+    };
+  } finally {
+    client.release();
+  }
+}
