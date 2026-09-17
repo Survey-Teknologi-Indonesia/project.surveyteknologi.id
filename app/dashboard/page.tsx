@@ -167,24 +167,26 @@ export default function OverviewPage() {
     }
   };
 
-  const getProjectStatus = (endDateStr: string | null) => {
-    if (!endDateStr)
-      return {
-        label: "In Progress",
-        color: "bg-sky-50 text-sky-700 border-sky-200",
-      };
-    const end = new Date(endDateStr);
-    const now = new Date();
-    if (end < now) {
-      return {
-        label: "Completed",
-        color: "bg-emerald-50 text-emerald-700 border-emerald-200",
-      };
+  // Logika pembacaan status baru
+  const getProjectStatus = (statusStr: string | undefined | null) => {
+    switch (statusStr) {
+      case "Complete":
+        return {
+          label: "Complete",
+          color: "bg-emerald-50 text-emerald-700 border-emerald-200",
+        };
+      case "On Going":
+        return {
+          label: "On Going",
+          color: "bg-sky-50 text-sky-700 border-sky-200",
+        };
+      case "added":
+      default:
+        return {
+          label: "Added",
+          color: "bg-slate-100 text-slate-700 border-slate-200",
+        };
     }
-    return {
-      label: "In Progress",
-      color: "bg-sky-50 text-sky-700 border-sky-200",
-    };
   };
 
   return (
@@ -431,7 +433,11 @@ export default function OverviewPage() {
                 urgentActions.map((action) => (
                   <div
                     key={`${action.id}-${action.gate}`}
-                    onClick={() => router.push(`/dashboard/${action.id}/${action.stepSlug}`)}
+                    onClick={() =>
+                      router.push(
+                        `/dashboard/${action.id}/${action.stepSlug}`,
+                      )
+                    }
                     className="p-3.5 rounded-xl border border-rose-100 hover:border-rose-400 bg-rose-50/30 hover:bg-white transition-all cursor-pointer group shadow-sm"
                   >
                     {/* Header Card: Code / ID & Badge Status */}
@@ -503,138 +509,7 @@ export default function OverviewPage() {
       </div>
 
       {/* 4. Recent Projects Summary */}
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-        <div className="p-5 border-b border-slate-200 bg-slate-50/50 flex items-center justify-between">
-          <div>
-            <h3 className="text-base font-bold text-slate-900">
-              Main Active Projects
-            </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Project records stored in Neon PostgreSQL database
-            </p>
-          </div>
-          <FileCheck2 className="w-5 h-5 text-slate-400" />
-        </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-slate-200 bg-slate-50 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                <th className="py-3.5 px-4 sm:px-6">Project Name</th>
-                <th className="py-3.5 px-4 sm:px-6">Client</th>
-                <th className="py-3.5 px-4 sm:px-6">Start Date</th>
-                <th className="py-3.5 px-4 sm:px-6">Target Completion</th>
-                <th className="py-3.5 px-4 sm:px-6 text-center">Status</th>
-                <th className="py-3.5 px-4 sm:px-6 text-center w-28">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-sm">
-              {isLoading ? (
-                <tr>
-                  <td colSpan={6} className="py-12 text-center text-slate-400">
-                    <Loader2 className="w-6 h-6 mx-auto animate-spin text-[#004b87] mb-2" />
-                    <p className="text-xs">
-                      Loading project data from database...
-                    </p>
-                  </td>
-                </tr>
-              ) : projects.length > 0 ? (
-                projects.map((project) => {
-                  const status = getProjectStatus(project.end_date);
-                  return (
-                    <tr
-                      key={project.project_id}
-                      onClick={() =>
-                        router.push(`/dashboard/${project.project_id}`)
-                      }
-                      className="hover:bg-slate-50/80 cursor-pointer transition-colors group"
-                    >
-                      {/* Project Name & ID */}
-                      <td className="py-3.5 px-4 sm:px-6">
-                        <div className="flex flex-col">
-                          <span className="font-bold text-slate-900 group-hover:text-[#004b87] transition-colors">
-                            {project.project_name}
-                          </span>
-                          <span className="text-[10px] font-mono text-slate-400">
-                            ID: {project.project_id.slice(0, 8)}...
-                          </span>
-                        </div>
-                      </td>
-
-                      {/* Client */}
-                      <td className="py-3.5 px-4 sm:px-6">
-                        <div className="inline-flex items-center gap-1.5 text-xs text-slate-700 font-medium">
-                          <Building2 className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                          <span>{project.client}</span>
-                        </div>
-                      </td>
-
-                      {/* Start Date */}
-                      <td className="py-3.5 px-4 sm:px-6 text-xs text-slate-600 font-mono">
-                        {formatDisplayDate(project.start_date)}
-                      </td>
-
-                      {/* Target Completion */}
-                      <td className="py-3.5 px-4 sm:px-6 text-xs text-slate-600 font-mono">
-                        {formatDisplayDate(project.end_date)}
-                      </td>
-
-                      {/* Status */}
-                      <td className="py-3.5 px-4 sm:px-6 text-center">
-                        <span
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${status.color}`}
-                        >
-                          <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                          {status.label}
-                        </span>
-                      </td>
-
-                      {/* Action */}
-                      <td className="py-3.5 px-4 sm:px-6 text-center">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            router.push(`/dashboard/${project.project_id}`);
-                          }}
-                          className="inline-flex items-center justify-center gap-1 px-3 py-1.5 text-xs font-bold text-[#004b87] bg-[#004b87]/10 hover:bg-[#004b87] hover:text-white border border-[#004b87]/20 rounded-lg transition-all"
-                        >
-                          Details
-                          <ChevronRight className="w-3.5 h-3.5" />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td colSpan={6} className="py-14 text-center text-slate-400">
-                    <FolderKanban className="w-10 h-10 mx-auto mb-2.5 text-slate-300" />
-                    <p className="text-sm font-semibold text-slate-700">
-                      No Projects in Database
-                    </p>
-                    <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-                      The project table is currently empty. Click the button
-                      below to add your first project.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFormError(null);
-                        setIsModalOpen(true);
-                      }}
-                      className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-[#004b87] hover:bg-[#003763] text-white shadow-sm transition-colors"
-                    >
-                      <Plus className="w-4 h-4" />
-                      Add First Project
-                    </button>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
 
       {/* 5. Add Project Modal */}
       {isModalOpen && (

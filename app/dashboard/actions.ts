@@ -3,7 +3,7 @@
 import pool from "@/app/lib/neon";
 import { revalidatePath } from "next/cache";
 
-export type ProjectStatus = "On Going" | "Finished" | "added";
+export type ProjectStatus = "added" | "On Going" | "Finished";
 
 export interface ProjectRecord {
   project_id: string;
@@ -11,7 +11,7 @@ export interface ProjectRecord {
   client: string;
   start_date: string | null;
   end_date: string | null;
-  status?: ProjectStatus | null;
+  status: ProjectStatus;
 }
 
 export interface DashboardMetrics {
@@ -31,14 +31,15 @@ export interface GateItem {
 }
 
 export interface UrgentActionItem {
-  id: string; // project_id
-  code: string; // ID pendek/kode
-  name: string; // Nama project
-  gate: string; // Nama Gate / Step
-  uploader: string; // Pihak/User penolak
-  status: string; // Evaluated Status (REVISION_NEEDED)
-  reason: string; // Alasan penolakan
+  id: string;
+  code: string;
+  name: string;
+  gate: string;
+  stepNumber: number;
   stepSlug: string;
+  uploader: string;
+  status: string;
+  reason: string;
 }
 
 export interface DashboardData {
@@ -48,33 +49,29 @@ export interface DashboardData {
   urgentActions: UrgentActionItem[];
 }
 
-export async function getDashboardData(): Promise<{
-  success: boolean;
-  data?: DashboardData;
-  error?: string;
-}> {
+export async function getDashboardData(): Promise<{ success: boolean; data?: DashboardData; error?: string }> {
   try {
-    // 1. Ambil semua project dari tabel project
+    // 1. Ambil semua project
     const projectRes = await pool.query(`
       SELECT 
         project_id, 
         project_name, 
         client, 
         TO_CHAR(start_date, 'YYYY-MM-DD') as start_date, 
-        TO_CHAR(end_date, 'YYYY-MM-DD') as end_date,
-        status
+        TO_CHAR(end_date, 'YYYY-MM-DD') as end_date
       FROM project 
       ORDER BY start_date DESC NULLS LAST
     `);
-    const projects: ProjectRecord[] = projectRes.rows;
+    const rawProjects = projectRes.rows;
 
-    // 2. Ambil master steps untuk sop gates
+    // 2. Ambil master steps untuk menghitung total gate SOP
     const stepRes = await pool.query(`
       SELECT step_id, TRIM(step_name) as step_name, step_number 
       FROM step 
       ORDER BY step_number ASC
     `);
     const steps = stepRes.rows;
+    const totalMasterGates = steps.length || 7;
 
     // 3. Ambil seluruh data progress
     const progressRes = await pool.query(`
@@ -83,53 +80,69 @@ export async function getDashboardData(): Promise<{
         p.project_id, 
         p.step_id, 
         p.upload_date, 
+        p.document_link,
         p."approvedBy",
         p."rejectionBy",
-        p.document_link,
-        pj.project_name,
         TRIM(s.step_name) as step_name, 
         s.step_number
       FROM progress p
       LEFT JOIN step s ON p.step_id = s.step_id
-      LEFT JOIN project pj ON p.project_id = pj.project_id
     `);
     const progressRows = progressRes.rows;
 
-    // 4. Query Urgent Actions khusus mengambil progress dengan status REVISION_NEEDED
-    // Logika status dievaluasi menggunakan CASE WHEN sesuai dengan kondisi logika frontend
-    // 4. Query Urgent Actions dengan JOIN ke tabel rejection dan account
-    // 1. Tambahkan COALESCE pada query SQL agar step_name tidak bernilai NULL
+    // 4. Kalkulasi status dinamis untuk setiap proyek
+    const projects: ProjectRecord[] = rawProjects.map((p) => {
+      const projectProgresses = progressRows.filter((pr) => pr.project_id === p.project_id);
+
+      // Hitung unggahan aktif
+      const hasAnyUpload = projectProgresses.some(
+        (pr) => pr.upload_date || pr.document_link
+      );
+
+      // Hitung gate yang sudah di-approve
+      const approvedCount = projectProgresses.filter((pr) => pr.approvedBy).length;
+
+      let calculatedStatus: ProjectStatus = "added";
+
+      if (totalMasterGates > 0 && approvedCount === totalMasterGates) {
+        calculatedStatus = "Finished";
+      } else if (hasAnyUpload) {
+        calculatedStatus = "On Going";
+      } else {
+        calculatedStatus = "added";
+      }
+
+      return {
+        ...p,
+        status: calculatedStatus,
+      };
+    });
+
+    // 5. Query Urgent Actions (Gate yang ditolak)
     const urgentRes = await pool.query(`
-  SELECT 
-    p.project_id as id,
-    pj.project_name as name,
-    s.step_number,
-    s.step_name,
-    COALESCE(TRIM(s.step_url), 'Unknown Step') as step_url,
-    COALESCE(a.name, a.username, 'QC Team') as uploader,
-    'REVISION_NEEDED' as status,
-    COALESCE(r.remarks, 'Revision required for this stage.') as reason
-  FROM progress p
-  INNER JOIN project pj ON p.project_id = pj.project_id
-  INNER JOIN step s ON p.step_id = s.step_id
-  INNER JOIN rejection r ON p."rejectionBy" = r.rejection_id
-  LEFT JOIN account a ON r."rejectBy" = a.account_id
-  WHERE p."approvedBy" IS NULL 
-    AND p."rejectionBy" IS NOT NULL
-  ORDER BY r.date DESC NULLS LAST, p.upload_date DESC NULLS LAST
-`);
+      SELECT 
+        p.project_id as id,
+        pj.project_name as name,
+        s.step_number,
+        COALESCE(TRIM(s.step_name), 'Unknown Step') as step_name,
+        COALESCE(a.name, a.username, 'QC Team') as uploader,
+        'REVISION_NEEDED' as status,
+        COALESCE(r.remarks, 'Revision required for this stage.') as reason
+      FROM progress p
+      INNER JOIN project pj ON p.project_id = pj.project_id
+      INNER JOIN step s ON p.step_id = s.step_id
+      INNER JOIN rejection r ON p."rejectionBy" = r.rejection_id
+      LEFT JOIN account a ON r."rejectBy" = a.account_id
+      WHERE p."approvedBy" IS NULL 
+        AND p."rejectionBy" IS NOT NULL
+      ORDER BY r.date DESC NULLS LAST, p.upload_date DESC NULLS LAST
+    `);
 
-    // 2. Gunakan optional chaining (?.) atau fallback default string sebelum calling .replace()
     const urgentActions: UrgentActionItem[] = urgentRes.rows.map((row) => {
-      const rawStepName = row.step_url || "Unknown Step";
+      const rawStepName = row.step_name || "Unknown Step";
       const cleanStepName = rawStepName.replace(/[\r\n\t]/g, "").trim();
-
-      // Keamanan tambahan untuk pembuat slug
       const stepSlug = cleanStepName
-        ? cleanStepName
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, "-")
-            .replace(/^-|-$/g, "")
+        ? cleanStepName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
         : "step";
 
       return {
@@ -144,30 +157,16 @@ export async function getDashboardData(): Promise<{
         reason: row.reason,
       };
     });
-    // Hitung metrik
+
+    // Metrik Dashboard
     const totalProjects = projects.length;
-    const now = new Date();
-    const activeProjects = projects.filter((p) => {
-      if (p.status) return p.status === "On Going" || p.status === "added";
-      if (!p.end_date) return true;
-      return new Date(p.end_date) >= now;
-    }).length;
+    const activeProjects = projects.filter((p) => p.status === "On Going" || p.status === "added").length;
+    const completedProjects = projects.filter((p) => p.status === "Finished").length;
 
-    const completedProjects =
-      projects.filter((p) => p.status === "Finished").length ||
-      totalProjects - activeProjects;
-
-    // Pending Verification: Ada upload_date/document_link tetapi approvedBy & rejectionBy masih NULL
     const pendingVerifications = progressRows.filter(
-      (pr) =>
-        (pr.upload_date || pr.document_link) &&
-        !pr.approvedBy &&
-        !pr.rejectionBy,
+      (pr) => (pr.upload_date || pr.document_link) && !pr.approvedBy && !pr.rejectionBy
     ).length;
 
-    const revisionsNeeded = urgentActions.length;
-
-    // Gate distribution colors
     const gateColors = [
       "bg-emerald-500",
       "bg-emerald-500",
@@ -179,9 +178,7 @@ export async function getDashboardData(): Promise<{
     ];
 
     const gateDistribution: GateItem[] = steps.map((s, idx) => {
-      const count = progressRows.filter(
-        (pr) => pr.step_number === s.step_number,
-      ).length;
+      const count = progressRows.filter((pr) => pr.step_number === s.step_number).length;
       return {
         gate: `Gate ${s.step_number}`,
         title: s.step_name.replace(/[\r\n\t]/g, "").trim(),
@@ -200,7 +197,7 @@ export async function getDashboardData(): Promise<{
           completedProjects,
           totalAreaHa: 0,
           pendingVerifications,
-          revisionsNeeded,
+          revisionsNeeded: urgentActions.length,
         },
         gateDistribution,
         urgentActions,
