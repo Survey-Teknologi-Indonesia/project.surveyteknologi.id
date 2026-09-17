@@ -144,17 +144,17 @@ export default function DashboardNavbar({
       <div className="flex items-center gap-3">
         {/* Search Bar */}
         <div className="relative hidden md:block w-64 xl:w-80">
-          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+          {/* <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
             <Search className="h-3.5 w-3.5" />
-          </div>
-          <input
+          </div> */}
+          {/* <input
             type="text"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Search projects or documents..."
             className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-9 pr-8 text-xs text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400/20 transition-all"
-          />
-          {searchQuery ? (
+          /> */}
+          {/* {searchQuery ? (
             <button
               type="button"
               onClick={() => onSearchChange("")}
@@ -168,7 +168,7 @@ export default function DashboardNavbar({
                 <Command className="h-2.5 w-2.5" /> K
               </kbd>
             </div>
-          )}
+          )} */}
         </div>
 
         {/* Notifications Button */}
