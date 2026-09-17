@@ -44,12 +44,32 @@ export default function OverviewPage() {
   });
   const [gateDistribution, setGateDistribution] = useState<GateItem[]>([
     { gate: "Gate 1", title: "Flight Plan", count: 0, color: "bg-emerald-500" },
-    { gate: "Gate 2", title: "Data Acquisition", count: 0, color: "bg-emerald-500" },
+    {
+      gate: "Gate 2",
+      title: "Data Acquisition",
+      count: 0,
+      color: "bg-emerald-500",
+    },
     { gate: "Gate 3", title: "Raw Data", count: 0, color: "bg-emerald-500" },
-    { gate: "Gate 4", title: "Raw Data Enhance", count: 0, color: "bg-emerald-500" },
+    {
+      gate: "Gate 4",
+      title: "Raw Data Enhance",
+      count: 0,
+      color: "bg-emerald-500",
+    },
     { gate: "Gate 5", title: "Orthophoto", count: 0, color: "bg-amber-500" },
-    { gate: "Gate 6", title: "Orthophoto Enhance", count: 0, color: "bg-[#004b87]" },
-    { gate: "Gate 7", title: "Digitization & Detection", count: 0, color: "bg-slate-400" },
+    {
+      gate: "Gate 6",
+      title: "Orthophoto Enhance",
+      count: 0,
+      color: "bg-[#004b87]",
+    },
+    {
+      gate: "Gate 7",
+      title: "Digitization & Detection",
+      count: 0,
+      color: "bg-slate-400",
+    },
   ]);
   const [urgentActions, setUrgentActions] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -148,13 +168,23 @@ export default function OverviewPage() {
   };
 
   const getProjectStatus = (endDateStr: string | null) => {
-    if (!endDateStr) return { label: "In Progress", color: "bg-sky-50 text-sky-700 border-sky-200" };
+    if (!endDateStr)
+      return {
+        label: "In Progress",
+        color: "bg-sky-50 text-sky-700 border-sky-200",
+      };
     const end = new Date(endDateStr);
     const now = new Date();
     if (end < now) {
-      return { label: "Completed", color: "bg-emerald-50 text-emerald-700 border-emerald-200" };
+      return {
+        label: "Completed",
+        color: "bg-emerald-50 text-emerald-700 border-emerald-200",
+      };
     }
-    return { label: "In Progress", color: "bg-sky-50 text-sky-700 border-sky-200" };
+    return {
+      label: "In Progress",
+      color: "bg-sky-50 text-sky-700 border-sky-200",
+    };
   };
 
   return (
@@ -186,7 +216,8 @@ export default function OverviewPage() {
             </span>
           </div>
           <p className="text-sm text-slate-500 mt-1">
-            Executive summary of operational status, 7-Gate workflow pipeline, and STI project metrics.
+            Executive summary of operational status, 7-Gate workflow pipeline,
+            and STI project metrics.
           </p>
         </div>
 
@@ -198,7 +229,9 @@ export default function OverviewPage() {
             disabled={isLoading}
             className="p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition-colors disabled:opacity-50"
           >
-            <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
+            <RefreshCw
+              className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`}
+            />
           </button>
 
           <button
@@ -230,7 +263,8 @@ export default function OverviewPage() {
         <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 flex items-start gap-3">
           <AlertCircle className="w-5 h-5 text-rose-600 flex-shrink-0 mt-0.5" />
           <div className="text-xs">
-            <span className="font-bold">Database Connection Issue:</span> {dbError}
+            <span className="font-bold">Database Connection Issue:</span>{" "}
+            {dbError}
           </div>
         </div>
       )}
@@ -291,7 +325,9 @@ export default function OverviewPage() {
             <span className="text-3xl font-black text-amber-600">
               {isLoading ? "-" : metrics.pendingVerifications}
             </span>
-            <span className="text-xs font-semibold text-amber-700">Review Queue</span>
+            <span className="text-xs font-semibold text-amber-700">
+              Review Queue
+            </span>
           </div>
         </div>
 
@@ -337,9 +373,14 @@ export default function OverviewPage() {
                 <div key={item.gate} className="space-y-1">
                   <div className="flex justify-between text-xs font-medium">
                     <span className="text-slate-700 font-bold">
-                      {item.gate}: <span className="font-normal text-slate-500">{item.title}</span>
+                      {item.gate}:{" "}
+                      <span className="font-normal text-slate-500">
+                        {item.title}
+                      </span>
                     </span>
-                    <span className="font-mono text-slate-900 font-bold">{item.count} Projects</span>
+                    <span className="font-mono text-slate-900 font-bold">
+                      {item.count} Projects
+                    </span>
                   </div>
                   <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
                     <div
@@ -347,7 +388,10 @@ export default function OverviewPage() {
                       style={{
                         width: `${
                           metrics.totalProjects > 0
-                            ? Math.min(100, (item.count / metrics.totalProjects) * 100)
+                            ? Math.min(
+                                100,
+                                (item.count / metrics.totalProjects) * 100,
+                              )
                             : 0
                         }%`,
                       }}
@@ -371,50 +415,76 @@ export default function OverviewPage() {
           <div>
             <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
               <div className="flex items-center gap-2">
-                <ShieldAlert className="w-4 h-4 text-amber-500" />
-                <h3 className="text-base font-bold text-slate-900">Action Center</h3>
+                <ShieldAlert className="w-4 h-4 text-rose-500" />
+                <h3 className="text-base font-bold text-slate-900">
+                  Action Center
+                </h3>
               </div>
-              <span className="text-[10px] font-bold uppercase bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full">
-                {urgentActions.length} Actions
+              <span className="text-[10px] font-bold uppercase bg-rose-50 text-rose-700 border border-rose-200 px-2 py-0.5 rounded-full">
+                {urgentActions.length} Rejections
               </span>
             </div>
 
-            {/* List Action */}
-            <div className="space-y-3">
+            {/* List Action / Rejections */}
+            <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
               {urgentActions.length > 0 ? (
                 urgentActions.map((action) => (
                   <div
-                    key={action.id}
-                    onClick={() => router.push(`/dashboard/${action.id}`)}
-                    className="p-3.5 rounded-xl border border-slate-200 hover:border-[#004b87] bg-slate-50/50 hover:bg-white transition-all cursor-pointer group"
+                    key={`${action.id}-${action.gate}`}
+                    onClick={() => router.push(`/dashboard/${action.id}/${action.stepSlug}`)}
+                    className="p-3.5 rounded-xl border border-rose-100 hover:border-rose-400 bg-rose-50/30 hover:bg-white transition-all cursor-pointer group shadow-sm"
                   >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[10px] font-mono text-slate-400">{action.code}</span>
-                      <span
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
-                          action.status === "PENDING"
-                            ? "bg-amber-100 text-amber-800"
-                            : "bg-rose-100 text-rose-800"
-                        }`}
-                      >
-                        {action.type}
+                    {/* Header Card: Code / ID & Badge Status */}
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[10px] font-mono font-bold text-slate-400">
+                        {action.code || `ID: ${String(action.id).slice(0, 8)}`}
+                      </span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 border border-rose-200 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3 text-rose-600" />
+                        {action.status || "REVISION_NEEDED"}
                       </span>
                     </div>
+
+                    {/* Nama Project */}
                     <h4 className="text-xs font-bold text-slate-900 group-hover:text-[#004b87] transition-colors line-clamp-1">
-                      {action.name}
+                      {action.name || action.projectName}
                     </h4>
-                    <div className="mt-2 flex items-center justify-between text-[11px] text-slate-500">
-                      <span>{action.gate}</span>
-                      <span className="font-semibold text-slate-700">{action.uploader}</span>
+
+                    {/* Step / Gate Info */}
+                    <div className="mt-1 flex items-center justify-between text-[11px]">
+                      <span className="font-semibold text-rose-700 bg-rose-100/60 px-2 py-0.5 rounded">
+                        {action.gate || action.stepName}
+                      </span>
+                      {action.uploader && (
+                        <span className="text-slate-500 text-[10px]">
+                          By: {action.uploader}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Box Alasan Penolakan / Rejection Reason */}
+                    <div className="mt-2.5 p-2.5 rounded-lg bg-white border border-rose-200 text-slate-700">
+                      <span className="block text-[10px] font-bold uppercase tracking-wider text-rose-600 mb-0.5">
+                        Rejection Reason:
+                      </span>
+                      <p className="text-xs italic text-slate-600 line-clamp-2">
+                        "
+                        {action.reason ||
+                          action.rejectionReason ||
+                          "No specific reason provided."}
+                        "
+                      </p>
                     </div>
                   </div>
                 ))
               ) : (
                 <div className="py-8 text-center text-slate-400">
                   <CheckCircle2 className="w-8 h-8 mx-auto mb-2 text-emerald-400 opacity-80" />
-                  <p className="text-xs font-medium text-slate-600">All Running Smoothly</p>
+                  <p className="text-xs font-medium text-slate-600">
+                    All Clear!
+                  </p>
                   <p className="text-[11px] text-slate-400 mt-0.5">
-                    No urgent review requests in queue at this time.
+                    No rejected gates or items requiring revision at this time.
                   </p>
                 </div>
               )}
@@ -436,7 +506,9 @@ export default function OverviewPage() {
       <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
         <div className="p-5 border-b border-slate-200 bg-slate-50/50 flex items-center justify-between">
           <div>
-            <h3 className="text-base font-bold text-slate-900">Main Active Projects</h3>
+            <h3 className="text-base font-bold text-slate-900">
+              Main Active Projects
+            </h3>
             <p className="text-xs text-slate-500 mt-0.5">
               Project records stored in Neon PostgreSQL database
             </p>
@@ -461,7 +533,9 @@ export default function OverviewPage() {
                 <tr>
                   <td colSpan={6} className="py-12 text-center text-slate-400">
                     <Loader2 className="w-6 h-6 mx-auto animate-spin text-[#004b87] mb-2" />
-                    <p className="text-xs">Loading project data from database...</p>
+                    <p className="text-xs">
+                      Loading project data from database...
+                    </p>
                   </td>
                 </tr>
               ) : projects.length > 0 ? (
@@ -470,7 +544,9 @@ export default function OverviewPage() {
                   return (
                     <tr
                       key={project.project_id}
-                      onClick={() => router.push(`/dashboard/${project.project_id}`)}
+                      onClick={() =>
+                        router.push(`/dashboard/${project.project_id}`)
+                      }
                       className="hover:bg-slate-50/80 cursor-pointer transition-colors group"
                     >
                       {/* Project Name & ID */}
@@ -538,7 +614,8 @@ export default function OverviewPage() {
                       No Projects in Database
                     </p>
                     <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-                      The project table is currently empty. Click the button below to add your first project.
+                      The project table is currently empty. Click the button
+                      below to add your first project.
                     </p>
                     <button
                       type="button"
@@ -569,7 +646,9 @@ export default function OverviewPage() {
             {/* Modal Header */}
             <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
               <div>
-                <h3 className="text-base font-bold text-slate-900">Add New Project</h3>
+                <h3 className="text-base font-bold text-slate-900">
+                  Add New Project
+                </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
                   Enter project information according to database schema
                 </p>
@@ -619,7 +698,9 @@ export default function OverviewPage() {
                   required
                   placeholder="e.g., Nusantara Capital City Authority / PT Sinar Mas"
                   value={formData.client}
-                  onChange={(e) => setFormData({ ...formData, client: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, client: e.target.value })
+                  }
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-900 placeholder:text-slate-400 focus:border-[#004b87] focus:ring-2 focus:ring-[#004b87]/10 focus:outline-none transition-all"
                 />
               </div>

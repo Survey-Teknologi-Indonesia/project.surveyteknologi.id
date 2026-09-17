@@ -83,6 +83,8 @@ export default function OrthophotoPage({
   const [error, setError] = useState<string | null>(null);
   const [isApproving, setIsApproving] = useState(false);
   const [isRejected, setIsRejected] = useState(false);
+  const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState("");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const [currentUser, setCurrentUser] = useState<{
@@ -134,7 +136,10 @@ export default function OrthophotoPage({
     setIsApproving(true);
     try {
       const storedUserId = localStorage.getItem("userId") || currentUser?.id;
-      const res = await approveOrthophotoEnhanceGate(data.projectId, storedUserId);
+      const res = await approveOrthophotoEnhanceGate(
+        data.projectId,
+        storedUserId,
+      );
       if (res.success) {
         setData((prev: any) => ({ ...prev, status: "APPROVED" }));
       } else {
@@ -147,26 +152,66 @@ export default function OrthophotoPage({
     }
   };
 
-    const handleRejection = async () => {
-      if (!data || data.status === "REVISION_NEEDED" || isRejected) return;
-  
-      setIsRejected(true);
-      try {
-        const storedUserId = localStorage.getItem("userId") || currentUser?.id;
-        const res = await rejectOrthophotoEnhanceGate(data.projectId, storedUserId);
-        if (res.success) {
-          setData((prev: any) => ({ ...prev, status: "REVISION_NEEDED" }));
-          setToastMessage("Gate 1 (Raw Data Enhance) rejected!");
-          setTimeout(() => setToastMessage(null), 4000);
-        } else {
-          alert(res.message || "Failed to reject stage.");
-        }
-      } catch (err) {
-        alert("An error occurred while verifying Raw Data Enhance.");
-      } finally {
-        setIsRejected(false);
+  // const handleRejection = async () => {
+  //   if (!data || data.status === "REVISION_NEEDED" || isRejected) return;
+
+  //   setIsRejected(true);
+  //   try {
+  //     const storedUserId = localStorage.getItem("userId") || currentUser?.id;
+  //     const res = await rejectOrthophotoEnhanceGate(data.projectId, storedUserId);
+  //     if (res.success) {
+  //       setData((prev: any) => ({ ...prev, status: "REVISION_NEEDED" }));
+  //       setToastMessage("Gate 1 (Ortophoto Enhance) rejected!");
+  //       setTimeout(() => setToastMessage(null), 4000);
+  //     } else {
+  //       alert(res.message || "Failed to reject stage.");
+  //     }
+  //   } catch (err) {
+  //     alert("An error occurred while verifying Ortophoto Enhance.");
+  //   } finally {
+  //     setIsRejected(false);
+  //   }
+  // };
+
+  // Buka modal saat tombol utama diklik
+  const openRejectModal = () => {
+    if (!data || data.status === "REVISION_NEEDED" || isRejected) return;
+    setRejectionReason("");
+    setIsRejectModalOpen(true);
+  };
+
+  // Eksekusi penolakan dari dalam modal
+  const confirmRejection = async () => {
+    if (!rejectionReason.trim()) {
+      alert("Harap isi alasan penolakan terlebih dahulu.");
+      return;
+    }
+
+    setIsRejected(true);
+    try {
+      const storedUserId = localStorage.getItem("userId") || currentUser?.id;
+
+      // Kirim rejectionReason ke API (sesuaikan parameter API jika backend menerima pesan)
+      const res = await rejectOrthophotoEnhanceGate(
+        data.projectId,
+        storedUserId,
+        rejectionReason,
+      );
+
+      if (res.success) {
+        setData((prev: any) => ({ ...prev, status: "REVISION_NEEDED" }));
+        setToastMessage("Gate 6 (Ortophoto Enhance) rejected!");
+        setIsRejectModalOpen(false);
+        setTimeout(() => setToastMessage(null), 4000);
+      } else {
+        alert(res.message || "Failed to reject stage.");
       }
-    };
+    } catch (err) {
+      alert("An error occurred while verifying Ortophoto Enhance.");
+    } finally {
+      setIsRejected(false);
+    }
+  };
 
   // Utility to upgrade Google Drive thumbnail quality from =s220 to High-Res =s1600
   const getHighResThumbnail = (link?: string) => {
@@ -191,7 +236,9 @@ export default function OrthophotoPage({
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 p-8 text-center">
         <CloudOff className="w-12 h-12 text-slate-300" />
-        <h2 className="text-lg font-bold text-slate-700">Failed to Load Data</h2>
+        <h2 className="text-lg font-bold text-slate-700">
+          Failed to Load Data
+        </h2>
         <p className="text-sm text-slate-500 max-w-sm">{error}</p>
         <Link
           href={`/dashboard/${id}`}
@@ -256,17 +303,17 @@ export default function OrthophotoPage({
                 ) : data.status === "APPROVED" ? (
                   <>
                     <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                    <span>Raw Data Enhance Verified</span>
+                    <span>Ortophoto Enhance Verified</span>
                   </>
                 ) : (
-                  <span>Approve Raw Data Enhance</span>
+                  <span>Approve Ortophoto Enhance</span>
                 )}
               </button>
               <button
                 type="button"
-                onClick={handleRejection}
+                onClick={openRejectModal}
                 disabled={data.status === "REVISION_NEEDED" || isRejected}
-                className={` items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${
+                className={`items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${
                   data.status === "REVISION_NEEDED"
                     ? "bg-red-50 text-red-700 border border-red-200 cursor-not-allowed"
                     : "bg-red-600 hover:bg-red-500 text-white cursor-pointer"
@@ -280,10 +327,10 @@ export default function OrthophotoPage({
                 ) : data.status === "REVISION_NEEDED" ? (
                   <>
                     <XCircle className="w-4 h-4 text-red-600" />
-                    <span>Raw Data Enhance Rejected</span>
+                    <span>Ortophoto Enhance Rejected</span>
                   </>
                 ) : (
-                  <span>Reject Raw Data Enhance</span>
+                  <span>Reject Ortophoto Enhance</span>
                 )}
               </button>
             </div>
@@ -350,6 +397,54 @@ export default function OrthophotoPage({
             <span>Open Google Drive</span>
             <ExternalLink className="w-3.5 h-3.5" />
           </a>
+        </div>
+      )}
+
+      {isRejectModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
+            <h3 className="text-lg font-bold text-slate-900 mb-2">
+              Rejection Reason
+            </h3>
+            <p className="text-xs text-slate-500 mb-4">
+              Please provide feedback or the reason why Ortophoto Enhance is
+              being rejected.
+            </p>
+
+            <textarea
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+              placeholder="Enter rejection reason here..."
+              rows={4}
+              className="w-full text-sm p-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-red-500 resize-none"
+            />
+
+            <div className="flex justify-end gap-3 mt-5">
+              <button
+                type="button"
+                onClick={() => setIsRejectModalOpen(false)}
+                disabled={isRejected}
+                className="px-4 py-2 text-xs font-semibold rounded-xl text-slate-600 hover:bg-slate-100 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmRejection}
+                disabled={isRejected || !rejectionReason.trim()}
+                className="flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl text-white bg-red-600 hover:bg-red-500 disabled:opacity-50 transition-colors shadow-sm"
+              >
+                {isRejected ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Submitting...</span>
+                  </>
+                ) : (
+                  <span>Submit Rejection</span>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

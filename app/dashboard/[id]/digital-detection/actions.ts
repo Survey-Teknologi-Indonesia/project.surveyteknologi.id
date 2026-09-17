@@ -398,7 +398,7 @@ export async function approveDigitalDetectionGate(
 
 export async function rejectDigitalDetectionGate(
   projectId: string,
-  rejectorId?: string
+  rejectorId?: string,
 ): Promise<{ success: boolean; message?: string }> {
   const client = await pool.connect();
 

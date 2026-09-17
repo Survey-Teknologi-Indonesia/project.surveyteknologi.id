@@ -30,22 +30,29 @@ export interface GateItem {
   color: string;
 }
 
+export interface UrgentActionItem {
+  id: string; // project_id
+  code: string; // ID pendek/kode
+  name: string; // Nama project
+  gate: string; // Nama Gate / Step
+  uploader: string; // Pihak/User penolak
+  status: string; // Evaluated Status (REVISION_NEEDED)
+  reason: string; // Alasan penolakan
+  stepSlug: string;
+}
+
 export interface DashboardData {
   projects: ProjectRecord[];
   metrics: DashboardMetrics;
   gateDistribution: GateItem[];
-  urgentActions: Array<{
-    id: string;
-    code: string;
-    name: string;
-    gate: string;
-    uploader: string;
-    status: "PENDING" | "REVISION";
-    type: string;
-  }>;
+  urgentActions: UrgentActionItem[];
 }
 
-export async function getDashboardData(): Promise<{ success: boolean; data?: DashboardData; error?: string }> {
+export async function getDashboardData(): Promise<{
+  success: boolean;
+  data?: DashboardData;
+  error?: string;
+}> {
   try {
     // 1. Ambil semua project dari tabel project
     const projectRes = await pool.query(`
@@ -69,7 +76,7 @@ export async function getDashboardData(): Promise<{ success: boolean; data?: Das
     `);
     const steps = stepRes.rows;
 
-    // 3. Ambil data progress (jika ada)
+    // 3. Ambil seluruh data progress
     const progressRes = await pool.query(`
       SELECT 
         p.progress_id, 
@@ -78,17 +85,67 @@ export async function getDashboardData(): Promise<{ success: boolean; data?: Das
         p.upload_date, 
         p."approvedBy",
         p."rejectionBy",
+        p.document_link,
+        pj.project_name,
         TRIM(s.step_name) as step_name, 
         s.step_number
       FROM progress p
       LEFT JOIN step s ON p.step_id = s.step_id
+      LEFT JOIN project pj ON p.project_id = pj.project_id
     `);
     const progressRows = progressRes.rows;
 
+    // 4. Query Urgent Actions khusus mengambil progress dengan status REVISION_NEEDED
+    // Logika status dievaluasi menggunakan CASE WHEN sesuai dengan kondisi logika frontend
+    // 4. Query Urgent Actions dengan JOIN ke tabel rejection dan account
+    // 1. Tambahkan COALESCE pada query SQL agar step_name tidak bernilai NULL
+    const urgentRes = await pool.query(`
+  SELECT 
+    p.project_id as id,
+    pj.project_name as name,
+    s.step_number,
+    s.step_name,
+    COALESCE(TRIM(s.step_url), 'Unknown Step') as step_url,
+    COALESCE(a.name, a.username, 'QC Team') as uploader,
+    'REVISION_NEEDED' as status,
+    COALESCE(r.remarks, 'Revision required for this stage.') as reason
+  FROM progress p
+  INNER JOIN project pj ON p.project_id = pj.project_id
+  INNER JOIN step s ON p.step_id = s.step_id
+  INNER JOIN rejection r ON p."rejectionBy" = r.rejection_id
+  LEFT JOIN account a ON r."rejectBy" = a.account_id
+  WHERE p."approvedBy" IS NULL 
+    AND p."rejectionBy" IS NOT NULL
+  ORDER BY r.date DESC NULLS LAST, p.upload_date DESC NULLS LAST
+`);
+
+    // 2. Gunakan optional chaining (?.) atau fallback default string sebelum calling .replace()
+    const urgentActions: UrgentActionItem[] = urgentRes.rows.map((row) => {
+      const rawStepName = row.step_url || "Unknown Step";
+      const cleanStepName = rawStepName.replace(/[\r\n\t]/g, "").trim();
+
+      // Keamanan tambahan untuk pembuat slug
+      const stepSlug = cleanStepName
+        ? cleanStepName
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/^-|-$/g, "")
+        : "step";
+
+      return {
+        id: row.id,
+        code: `PRJ-${String(row.id).slice(0, 5).toUpperCase()}`,
+        name: row.name || "Unnamed Project",
+        gate: `Gate ${row.step_number || 0}: ${cleanStepName}`,
+        stepNumber: row.step_number || 0,
+        stepSlug: stepSlug,
+        uploader: row.uploader,
+        status: row.status,
+        reason: row.reason,
+      };
+    });
     // Hitung metrik
     const totalProjects = projects.length;
-    
-    // Proyek aktif: jika status On Going / added, atau end_date di masa depan
     const now = new Date();
     const activeProjects = projects.filter((p) => {
       if (p.status) return p.status === "On Going" || p.status === "added";
@@ -96,12 +153,19 @@ export async function getDashboardData(): Promise<{ success: boolean; data?: Das
       return new Date(p.end_date) >= now;
     }).length;
 
-    const completedProjects = projects.filter((p) => p.status === "Finished").length || (totalProjects - activeProjects);
+    const completedProjects =
+      projects.filter((p) => p.status === "Finished").length ||
+      totalProjects - activeProjects;
 
-    // Pending verification: progress yang sudah diupload tapi belum di-approve
+    // Pending Verification: Ada upload_date/document_link tetapi approvedBy & rejectionBy masih NULL
     const pendingVerifications = progressRows.filter(
-      (pr) => pr.upload_date && !pr.approvedBy
+      (pr) =>
+        (pr.upload_date || pr.document_link) &&
+        !pr.approvedBy &&
+        !pr.rejectionBy,
     ).length;
+
+    const revisionsNeeded = urgentActions.length;
 
     // Gate distribution colors
     const gateColors = [
@@ -115,7 +179,9 @@ export async function getDashboardData(): Promise<{ success: boolean; data?: Das
     ];
 
     const gateDistribution: GateItem[] = steps.map((s, idx) => {
-      const count = progressRows.filter((pr) => pr.step_number === s.step_number).length;
+      const count = progressRows.filter(
+        (pr) => pr.step_number === s.step_number,
+      ).length;
       return {
         gate: `Gate ${s.step_number}`,
         title: s.step_name.replace(/[\r\n\t]/g, "").trim(),
@@ -134,10 +200,10 @@ export async function getDashboardData(): Promise<{ success: boolean; data?: Das
           completedProjects,
           totalAreaHa: 0,
           pendingVerifications,
-          revisionsNeeded: 0,
+          revisionsNeeded,
         },
         gateDistribution,
-        urgentActions: [],
+        urgentActions,
       },
     };
   } catch (error: any) {
@@ -164,7 +230,9 @@ export async function createProject(formData: {
       return { success: false, error: "Client name is required." };
     }
 
-    const startDate = formData.start_date?.trim() ? formData.start_date.trim() : null;
+    const startDate = formData.start_date?.trim()
+      ? formData.start_date.trim()
+      : null;
     const endDate = formData.end_date?.trim() ? formData.end_date.trim() : null;
     const projectStatus = formData.status || "On Going";
 
@@ -180,7 +248,13 @@ export async function createProject(formData: {
         TO_CHAR(end_date, 'YYYY-MM-DD') as end_date,
         status
       `,
-      [formData.project_name.trim(), formData.client.trim(), startDate, endDate, projectStatus]
+      [
+        formData.project_name.trim(),
+        formData.client.trim(),
+        startDate,
+        endDate,
+        projectStatus,
+      ],
     );
 
     const newProject = res.rows[0];
