@@ -67,7 +67,7 @@ function extractDriveId(url: string): { id: string; type: "folder" | "file" } | 
   return null;
 }
 
-export async function getRawDataPageData(projectId: string): Promise<{
+export async function getRawDataEnhancePageData(projectId: string): Promise<{
   success: boolean;
   data?: RawDataPageData;
   error?: string;
@@ -316,7 +316,7 @@ export async function getRawDataPageData(projectId: string): Promise<{
 }
 
 // ─── Approval Actions ─────────────
-export async function approveRawDataGate(
+export async function approveRawDataEnhanceGate(
   projectId: string,
   approverId?: string
 ): Promise<{ success: boolean; message?: string }> {
@@ -403,7 +403,8 @@ export async function approveRawDataGate(
 
 export async function rejectRawDataEnhanceGate(
   projectId: string,
-  rejectorId?: string
+  rejectorId?: string,
+  reason?: string,
 ): Promise<{ success: boolean; message?: string }> {
   const client = await pool.connect();
 
@@ -449,7 +450,7 @@ export async function rejectRawDataEnhanceGate(
       `INSERT INTO rejection ("rejectBy", date, remarks)
        VALUES ($1, CURRENT_DATE, $2)
        RETURNING rejection_id`,
-      [validUserId, "Rejected via Flight Plan Dashboard"]
+      [validUserId, reason]
     );
 
     const newRejectionId = rejectionRes.rows[0].rejection_id;
@@ -472,8 +473,8 @@ export async function rejectRawDataEnhanceGate(
 
     await client.query("COMMIT");
 
-    revalidatePath(`/dashboard/${projectId}/flight-plan`);
-    return { success: true, message: "Flight Plan successfully rejected!" };
+    revalidatePath(`/dashboard/${projectId}/raw-data-enhance`);
+    return { success: true, message: "Raw Data Enhancement successfully rejected!" };
   } catch (error: any) {
     await client.query("ROLLBACK");
     console.error("Approval error:", error);

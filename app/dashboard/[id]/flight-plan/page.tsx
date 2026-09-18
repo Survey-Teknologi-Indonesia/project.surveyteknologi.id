@@ -83,13 +83,15 @@ export default function FlightPlanPage({
   const resolvedParams = use(params);
   const id = resolvedParams.id;
 
-  const [flightData, setFlightData] = useState<RawDataPageData | null>(null);
+  const [flightData, setFlightData] = useState<any>(null);
   const [selectedFile, setSelectedFile] = useState<DriveFileItem | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isApproving, setIsApproving] = useState(false);
   const [isRejected, setIsRejected] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState("");
 
   const [currentUser, setCurrentUser] = useState<{
     id?: string;
@@ -160,25 +162,41 @@ export default function FlightPlanPage({
       setIsApproving(false);
     }
   };
-  const handleRejection = async () => {
-    if (!flightData || flightData.status === "REVISION_NEEDED" || isRejected) return;
+  const openRejectModal = () => {
+    if (!flightData || flightData.status === "REVISION_NEEDED" || isRejected)
+      return;
+    setRejectionReason("");
+    setIsRejectModalOpen(true);
+  };
+
+  // Eksekusi penolakan dari dalam modal
+  const confirmRejection = async () => {
+    if (!rejectionReason.trim()) {
+      alert("Fill the rejection message first");
+      return;
+    }
 
     setIsRejected(true);
     try {
       const storedUserId = localStorage.getItem("userId") || currentUser?.id;
+
+      // Kirim rejectionReason ke API (sesuaikan parameter API jika backend menerima pesan)
       const res = await rejectFlightPlanGate(
         flightData.projectId,
         storedUserId,
+        rejectionReason,
       );
+
       if (res.success) {
         setFlightData((prev: any) => ({ ...prev, status: "REVISION_NEEDED" }));
         setToastMessage("Gate 1 (Flight Plan) rejected!");
+        setIsRejectModalOpen(false);
         setTimeout(() => setToastMessage(null), 4000);
       } else {
         alert(res.message || "Failed to reject stage.");
       }
     } catch (err) {
-      alert("An error occurred while verifying Flight Plan.");
+      alert("An error occurred while verifying Digital Detection.");
     } finally {
       setIsRejected(false);
     }
@@ -279,7 +297,7 @@ export default function FlightPlanPage({
                   onClick={handleApproval}
                   disabled={flightData.status === "APPROVED" || isApproving}
                   className={` items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${
-                    flightData.status === "APPROVED" 
+                    flightData.status === "APPROVED"
                       ? "bg-emerald-50 text-emerald-700 border border-emerald-200 cursor-not-allowed"
                       : "bg-[#004b87] hover:bg-[#003763] text-white cursor-pointer"
                   } ${flightData.status === "REVISION_NEEDED" ? "hidden" : "inline-flex"}`}
@@ -300,8 +318,10 @@ export default function FlightPlanPage({
                 </button>
                 <button
                   type="button"
-                  onClick={handleRejection}
-                  disabled={flightData.status === "REVISION_NEEDED" || isRejected}
+                  onClick={openRejectModal}
+                  disabled={
+                    flightData.status === "REVISION_NEEDED" || isRejected
+                  }
                   className={` items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${
                     flightData.status === "REVISION_NEEDED"
                       ? "bg-red-50 text-red-700 border border-red-200 cursor-not-allowed"
@@ -373,6 +393,54 @@ export default function FlightPlanPage({
       ) : (
         <div className="p-8 rounded-2xl bg-slate-50 border border-dashed border-slate-200 text-center text-xs text-slate-500">
           No Google Drive link associated with this stage yet.
+        </div>
+      )}
+
+      {isRejectModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
+            <h3 className="text-lg font-bold text-slate-900 mb-2">
+              Rejection Reason
+            </h3>
+            <p className="text-xs text-slate-500 mb-4">
+              Please provide feedback or the reason why Digital Detection is
+              being rejected.
+            </p>
+
+            <textarea
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+              placeholder="Enter rejection reason here..."
+              rows={4}
+              className="w-full text-sm p-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-red-500 resize-none"
+            />
+
+            <div className="flex justify-end gap-3 mt-5">
+              <button
+                type="button"
+                onClick={() => setIsRejectModalOpen(false)}
+                disabled={isRejected}
+                className="px-4 py-2 text-xs font-semibold rounded-xl text-slate-600 hover:bg-slate-100 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmRejection}
+                disabled={isRejected || !rejectionReason.trim()}
+                className="flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl text-white bg-red-600 hover:bg-red-500 disabled:opacity-50 transition-colors shadow-sm"
+              >
+                {isRejected ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Submitting...</span>
+                  </>
+                ) : (
+                  <span>Submit Rejection</span>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

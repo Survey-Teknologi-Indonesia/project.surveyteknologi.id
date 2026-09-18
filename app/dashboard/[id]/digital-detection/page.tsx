@@ -84,6 +84,8 @@ export default function DigitalDetectionPage({
   const [isApproving, setIsApproving] = useState(false);
   const [isRejected, setIsRejected] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState("");
 
   const [currentUser, setCurrentUser] = useState<{
     id?: string;
@@ -149,20 +151,35 @@ export default function DigitalDetectionPage({
       setIsApproving(false);
     }
   };
-
-  const handleRejection = async () => {
+  // Buka modal saat tombol utama diklik
+  const openRejectModal = () => {
     if (!data || data.status === "REVISION_NEEDED" || isRejected) return;
+    setRejectionReason("");
+    setIsRejectModalOpen(true);
+  };
+
+  // Eksekusi penolakan dari dalam modal
+  const confirmRejection = async () => {
+    if (!rejectionReason.trim()) {
+      alert("Fill the rejection message first");
+      return;
+    }
 
     setIsRejected(true);
     try {
       const storedUserId = localStorage.getItem("userId") || currentUser?.id;
+
+      // Kirim rejectionReason ke API (sesuaikan parameter API jika backend menerima pesan)
       const res = await rejectDigitalDetectionGate(
         data.projectId,
         storedUserId,
+        rejectionReason,
       );
+
       if (res.success) {
         setData((prev: any) => ({ ...prev, status: "REVISION_NEEDED" }));
-        setToastMessage("Gate 1 (Digital Detection) rejected!");
+        setToastMessage("Gate 7 (Digital Detection) rejected!");
+        setIsRejectModalOpen(false);
         setTimeout(() => setToastMessage(null), 4000);
       } else {
         alert(res.message || "Failed to reject stage.");
@@ -272,7 +289,7 @@ export default function DigitalDetectionPage({
               </button>
               <button
                 type="button"
-                onClick={handleRejection}
+                onClick={openRejectModal}
                 disabled={data.status === "REVISION_NEEDED" || isRejected}
                 className={` items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${
                   data.status === "REVISION_NEEDED"
@@ -342,8 +359,8 @@ export default function DigitalDetectionPage({
             <h3 className="text-sm font-bold text-slate-900">
               Access Digital Detection Storage Folder
             </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              All digital detection and vectorization files are organized in
+              <p className="text-xs text-slate-500 mt-0.5">
+                All digital detection and vectorization files are organized in
               Google Drive and ready for download or GIS integration.
             </p>
           </div>
@@ -358,6 +375,54 @@ export default function DigitalDetectionPage({
             <span>Open Google Drive</span>
             <ExternalLink className="w-3.5 h-3.5" />
           </a>
+        </div>
+      )}
+
+      {isRejectModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
+            <h3 className="text-lg font-bold text-slate-900 mb-2">
+              Rejection Reason
+            </h3>
+            <p className="text-xs text-slate-500 mb-4">
+              Please provide feedback or the reason why Digital Detection is
+              being rejected.
+            </p>
+
+            <textarea
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+              placeholder="Enter rejection reason here..."
+              rows={4}
+              className="w-full text-sm p-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-red-500 resize-none"
+            />
+
+            <div className="flex justify-end gap-3 mt-5">
+              <button
+                type="button"
+                onClick={() => setIsRejectModalOpen(false)}
+                disabled={isRejected}
+                className="px-4 py-2 text-xs font-semibold rounded-xl text-slate-600 hover:bg-slate-100 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmRejection}
+                disabled={isRejected || !rejectionReason.trim()}
+                className="flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl text-white bg-red-600 hover:bg-red-500 disabled:opacity-50 transition-colors shadow-sm"
+              >
+                {isRejected ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Submitting...</span>
+                  </>
+                ) : (
+                  <span>Submit Rejection</span>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

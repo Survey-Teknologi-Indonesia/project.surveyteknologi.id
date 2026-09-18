@@ -397,7 +397,8 @@ export async function approveDataAcquisitionGate(
 
 export async function rejectDataAcquisitionGate(
   projectId: string,
-  rejectorId?: string
+  rejectorId?: string,
+  reason?: string,
 ): Promise<{ success: boolean; message?: string }> {
   const client = await pool.connect();
 
@@ -443,7 +444,7 @@ export async function rejectDataAcquisitionGate(
       `INSERT INTO rejection ("rejectBy", date, remarks)
        VALUES ($1, CURRENT_DATE, $2)
        RETURNING rejection_id`,
-      [validUserId, "Rejected via Flight Plan Dashboard"]
+      [validUserId, reason]
     );
 
     const newRejectionId = rejectionRes.rows[0].rejection_id;
@@ -466,8 +467,8 @@ export async function rejectDataAcquisitionGate(
 
     await client.query("COMMIT");
 
-    revalidatePath(`/dashboard/${projectId}/flight-plan`);
-    return { success: true, message: "Flight Plan successfully rejected!" };
+    revalidatePath(`/dashboard/${projectId}/data-acquisition`);
+    return { success: true, message: "Data Acquisition successfully rejected!" };
   } catch (error: any) {
     await client.query("ROLLBACK");
     console.error("Approval error:", error);

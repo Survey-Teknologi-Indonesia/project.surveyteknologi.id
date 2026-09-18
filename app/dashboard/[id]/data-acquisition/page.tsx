@@ -83,13 +83,15 @@ export default function DataAcquisitionPage({
   const resolvedParams = use(params);
   const id = resolvedParams.id;
 
-  const [flightData, setFlightData] = useState<DataAcquisitionPageData | null>(null);
+  const [data, setData] = useState<any>(null);
   const [selectedFile, setSelectedFile] = useState<DriveFileItem | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isApproving, setIsApproving] = useState(false);
   const [isRejected, setIsRejected] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState("");
 
   const [currentUser, setCurrentUser] = useState<{
     id?: string;
@@ -115,7 +117,7 @@ export default function DataAcquisitionPage({
 
     const res = await getDataAcquisitionPageData(id);
     if (res.success && res.data) {
-      setFlightData(res.data);
+      setData(res.data);
 
       // Select first KML file or image as default preview
       const fetchedFiles: DriveFileItem[] = res.data.files || [];
@@ -138,17 +140,17 @@ export default function DataAcquisitionPage({
 
   // Handle Action Approval Gate 2
   const handleApproval = async () => {
-    if (!flightData || flightData.status === "APPROVED" || isApproving) return;
+    if (!data || data.status === "APPROVED" || isApproving) return;
 
     setIsApproving(true);
     try {
       const storedUserId = localStorage.getItem("userId") || currentUser?.id;
       const res = await approveDataAcquisitionGate(
-        flightData.projectId,
+        data.projectId,
         storedUserId,
       );
       if (res.success) {
-        setFlightData((prev: any) => ({ ...prev, status: "APPROVED" }));
+        setData((prev: any) => ({ ...prev, status: "APPROVED" }));
         setToastMessage("Gate 2 (Data Acquisition) successfully approved!");
         setTimeout(() => setToastMessage(null), 4000);
       } else {
@@ -160,25 +162,40 @@ export default function DataAcquisitionPage({
       setIsApproving(false);
     }
   };
-  const handleRejection = async () => {
-    if (!flightData || flightData.status === "REVISION_NEEDED" || isRejected) return;
+  const openRejectModal = () => {
+    if (!data || data.status === "REVISION_NEEDED" || isRejected) return;
+    setRejectionReason("");
+    setIsRejectModalOpen(true);
+  };
+
+  // Eksekusi penolakan dari dalam modal
+  const confirmRejection = async () => {
+    if (!rejectionReason.trim()) {
+      alert("Fill the rejection message first");
+      return;
+    }
 
     setIsRejected(true);
     try {
       const storedUserId = localStorage.getItem("userId") || currentUser?.id;
+
+      // Kirim rejectionReason ke API (sesuaikan parameter API jika backend menerima pesan)
       const res = await rejectDataAcquisitionGate(
-        flightData.projectId,
+        data.projectId,
         storedUserId,
+        rejectionReason,
       );
+
       if (res.success) {
-        setFlightData((prev: any) => ({ ...prev, status: "REVISION_NEEDED" }));
-        setToastMessage("Gate 2 (Data Acquisition) rejected!");
+        setData((prev: any) => ({ ...prev, status: "REVISION_NEEDED" }));
+        setToastMessage("Gate 7 (Digital Detection) rejected!");
+        setIsRejectModalOpen(false);
         setTimeout(() => setToastMessage(null), 4000);
       } else {
         alert(res.message || "Failed to reject stage.");
       }
     } catch (err) {
-      alert("An error occurred while verifying Data Acquisition.");
+      alert("An error occurred while verifying Digital Detection.");
     } finally {
       setIsRejected(false);
     }
@@ -195,7 +212,7 @@ export default function DataAcquisitionPage({
     );
   }
 
-  if (error || !flightData) {
+  if (error || !data) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 p-8 text-center font-sans">
         <AlertCircle className="w-12 h-12 text-slate-300" />
@@ -213,8 +230,8 @@ export default function DataAcquisitionPage({
     );
   }
 
-  const hasFiles = flightData.files && flightData.files.length > 0;
-  const hasDriveLink = !!flightData.driveLink;
+  const hasFiles = data.files && data.files.length > 0;
+  const hasDriveLink = !!data.driveLink;
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 p-4 sm:p-6 text-slate-800 font-sans relative">
@@ -230,7 +247,7 @@ export default function DataAcquisitionPage({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
         <div className="flex items-center gap-3">
           <Link
-            href={`/dashboard/${flightData.projectId}`}
+            href={`/dashboard/${data.projectId}`}
             className="p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 transition-colors text-slate-600"
             title="Back to Dashboard"
           >
@@ -243,16 +260,16 @@ export default function DataAcquisitionPage({
               </span>
               <span className="text-slate-300">•</span>
               <span className="text-xs font-mono text-slate-500">
-                ID: {flightData.projectId.slice(0, 8).toUpperCase()}
+                ID: {data.projectId.slice(0, 8).toUpperCase()}
               </span>
             </div>
             <h1 className="text-xl sm:text-2xl font-bold text-slate-900 mt-0.5">
-              {flightData.projectName}
+              {data.projectName}
             </h1>
-            {flightData.client && (
+            {data.client && (
               <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
                 <Building2 className="w-3.5 h-3.5 text-slate-400" />
-                Client: {flightData.client}
+                Client: {data.client}
               </p>
             )}
           </div>
@@ -271,25 +288,25 @@ export default function DataAcquisitionPage({
           {/* Action / Status Section */}
           <div className="flex items-center gap-3">
             {currentUser?.role === "uploader" ? (
-              <StatusBadge status={flightData.status} />
+              <StatusBadge status={data.status} />
             ) : (
               <div className="flex flex-row gap-4">
                 <button
                   type="button"
                   onClick={handleApproval}
-                  disabled={flightData.status === "APPROVED" || isApproving}
+                  disabled={data.status === "APPROVED" || isApproving}
                   className={` items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${
-                    flightData.status === "APPROVED" 
+                    data.status === "APPROVED"
                       ? "bg-emerald-50 text-emerald-700 border border-emerald-200 cursor-not-allowed"
                       : "bg-[#004b87] hover:bg-[#003763] text-white cursor-pointer"
-                  } ${flightData.status === "REVISION_NEEDED" ? "hidden" : "inline-flex"}`}
+                  } ${data.status === "REVISION_NEEDED" ? "hidden" : "inline-flex"}`}
                 >
                   {isApproving ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
                       <span>Processing...</span>
                     </>
-                  ) : flightData.status === "APPROVED" ? (
+                  ) : data.status === "APPROVED" ? (
                     <>
                       <CheckCircle2 className="w-4 h-4 text-emerald-500" />
                       <span>Data Acquisition Verified</span>
@@ -300,20 +317,20 @@ export default function DataAcquisitionPage({
                 </button>
                 <button
                   type="button"
-                  onClick={handleRejection}
-                  disabled={flightData.status === "REVISION_NEEDED" || isRejected}
+                  onClick={openRejectModal}
+                  disabled={data.status === "REVISION_NEEDED" || isRejected}
                   className={` items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${
-                    flightData.status === "REVISION_NEEDED"
+                    data.status === "REVISION_NEEDED"
                       ? "bg-red-50 text-red-700 border border-red-200 cursor-not-allowed"
                       : "bg-red-600 hover:bg-red-500 text-white cursor-pointer"
-                  } ${flightData.status === "APPROVED" ? "hidden" : "inline-flex"}`}
+                  } ${data.status === "APPROVED" ? "hidden" : "inline-flex"}`}
                 >
                   {isRejected ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
                       <span>Rejecting...</span>
                     </>
-                  ) : flightData.status === "REVISION_NEEDED" ? (
+                  ) : data.status === "REVISION_NEEDED" ? (
                     <>
                       <XCircle className="w-4 h-4 text-red-600" />
                       <span>Data Acquisition Rejected</span>
@@ -331,14 +348,61 @@ export default function DataAcquisitionPage({
       {/* 3. Shared File Browser Komponen */}
       {hasDriveLink ? (
         <DriveFileBrowser
-          files={flightData.files}
-          driveLink={flightData.driveLink!}
-          totalFiles={flightData.totalFiles}
-
+          files={data.files}
+          driveLink={data.driveLink!}
+          totalFiles={data.totalFiles}
         />
       ) : (
         <div className="p-8 rounded-2xl bg-slate-50 border border-dashed border-slate-200 text-center text-xs text-slate-500">
           No Google Drive link associated with this stage yet.
+        </div>
+      )}
+
+      {isRejectModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
+            <h3 className="text-lg font-bold text-slate-900 mb-2">
+              Rejection Reason
+            </h3>
+            <p className="text-xs text-slate-500 mb-4">
+              Please provide feedback or the reason why Digital Detection is
+              being rejected.
+            </p>
+
+            <textarea
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+              placeholder="Enter rejection reason here..."
+              rows={4}
+              className="w-full text-sm p-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-red-500 resize-none"
+            />
+
+            <div className="flex justify-end gap-3 mt-5">
+              <button
+                type="button"
+                onClick={() => setIsRejectModalOpen(false)}
+                disabled={isRejected}
+                className="px-4 py-2 text-xs font-semibold rounded-xl text-slate-600 hover:bg-slate-100 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmRejection}
+                disabled={isRejected || !rejectionReason.trim()}
+                className="flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl text-white bg-red-600 hover:bg-red-500 disabled:opacity-50 transition-colors shadow-sm"
+              >
+                {isRejected ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Submitting...</span>
+                  </>
+                ) : (
+                  <span>Submit Rejection</span>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

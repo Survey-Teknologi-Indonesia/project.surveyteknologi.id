@@ -86,6 +86,8 @@ export default function OrthophotoPage({
   const [isApproving, setIsApproving] = useState(false);
   const [isRejected, setIsRejected] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState("");
 
   const [currentUser, setCurrentUser] = useState<{
     id?: string;
@@ -153,22 +155,40 @@ export default function OrthophotoPage({
   };
 
   // 3. Handle Reject Action
-  const handleRejection = async () => {
+  const openRejectModal = () => {
     if (!data || data.status === "REVISION_NEEDED" || isRejected) return;
+    setRejectionReason("");
+    setIsRejectModalOpen(true);
+  };
+
+  // Eksekusi penolakan dari dalam modal
+  const confirmRejection = async () => {
+    if (!rejectionReason.trim()) {
+      alert("Fill the rejection message first");
+      return;
+    }
 
     setIsRejected(true);
     try {
       const storedUserId = localStorage.getItem("userId") || currentUser?.id;
-      const res = await rejectRawDataGate(data.projectId, storedUserId);
+
+      // Kirim rejectionReason ke API (sesuaikan parameter API jika backend menerima pesan)
+      const res = await rejectOrthophotoGate(
+        data.projectId,
+        storedUserId,
+        rejectionReason,
+      );
+
       if (res.success) {
         setData((prev: any) => ({ ...prev, status: "REVISION_NEEDED" }));
-        setToastMessage("Gate 1 (Flight Plan) rejected!");
+        setToastMessage("Gate 5 (Ortophoto) rejected!");
+        setIsRejectModalOpen(false);
         setTimeout(() => setToastMessage(null), 4000);
       } else {
         alert(res.message || "Failed to reject stage.");
       }
     } catch (err) {
-      alert("An error occurred while verifying Flight Plan.");
+      alert("An error occurred while verifying Ortophoto.");
     } finally {
       setIsRejected(false);
     }
@@ -264,15 +284,15 @@ export default function OrthophotoPage({
                 ) : data.status === "APPROVED" ? (
                   <>
                     <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                    <span>Flight Plan Verified</span>
+                    <span>Orthophoto Verified</span>
                   </>
                 ) : (
-                  <span>Approve Flight Plan</span>
+                  <span>Approve Orthophoto</span>
                 )}
               </button>
               <button
                 type="button"
-                onClick={handleRejection}
+                onClick={openRejectModal}
                 disabled={data.status === "REVISION_NEEDED" || isRejected}
                 className={` items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${
                   data.status === "REVISION_NEEDED"
@@ -288,10 +308,10 @@ export default function OrthophotoPage({
                 ) : data.status === "REVISION_NEEDED" ? (
                   <>
                     <XCircle className="w-4 h-4 text-red-600" />
-                    <span>Flight Plan Rejected</span>
+                    <span>Orthophoto Rejected</span>
                   </>
                 ) : (
-                  <span>Reject Flight Plan</span>
+                  <span>Reject Orthophoto</span>
                 )}
               </button>
             </div>
@@ -358,6 +378,54 @@ export default function OrthophotoPage({
             <span>Open Orthophoto Google Drive</span>
             <ExternalLink className="w-3.5 h-3.5" />
           </a>
+        </div>
+      )}
+
+      {isRejectModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
+            <h3 className="text-lg font-bold text-slate-900 mb-2">
+              Rejection Reason
+            </h3>
+            <p className="text-xs text-slate-500 mb-4">
+              Please provide feedback or the reason why Orthophoto is
+              being rejected.
+            </p>
+
+            <textarea
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+              placeholder="Enter rejection reason here..."
+              rows={4}
+              className="w-full text-sm p-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-red-500 resize-none"
+            />
+
+            <div className="flex justify-end gap-3 mt-5">
+              <button
+                type="button"
+                onClick={() => setIsRejectModalOpen(false)}
+                disabled={isRejected}
+                className="px-4 py-2 text-xs font-semibold rounded-xl text-slate-600 hover:bg-slate-100 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmRejection}
+                disabled={isRejected || !rejectionReason.trim()}
+                className="flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl text-white bg-red-600 hover:bg-red-500 disabled:opacity-50 transition-colors shadow-sm"
+              >
+                {isRejected ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Submitting...</span>
+                  </>
+                ) : (
+                  <span>Submit Rejection</span>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

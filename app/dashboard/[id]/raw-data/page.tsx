@@ -17,7 +17,12 @@ import {
   Loader2,
 } from "lucide-react";
 
-import { getRawDataPageData, approveRawDataGate, rejectRawDataGate, RawDataPageData } from "./actions";
+import {
+  getRawDataPageData,
+  approveRawDataGate,
+  rejectRawDataGate,
+  RawDataPageData,
+} from "./actions";
 import DriveFileBrowser, { ExtBadge } from "./DriveFileBrowser";
 
 // ─── Status Badge Helper ───────────────────────────────────────────────────
@@ -74,6 +79,8 @@ export default function RawDataPage({
   const [isApproving, setIsApproving] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isRejected, setIsRejected] = useState(false);
+  const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState("");
 
   const [currentUser, setCurrentUser] = useState<{
     id?: string;
@@ -134,29 +141,44 @@ export default function RawDataPage({
   };
 
   // 3. Handle Reject Action
-    const handleRejection = async () => {
-      if (!data || data.status === "REVISION_NEEDED" || isRejected) return;
-  
-      setIsRejected(true);
-      try {
-        const storedUserId = localStorage.getItem("userId") || currentUser?.id;
-        const res = await rejectRawDataGate(
-          data.projectId,
-          storedUserId,
-        );
-        if (res.success) {
-          setData((prev: any) => ({ ...prev, status: "REVISION_NEEDED" }));
-          setToastMessage("Gate 1 (Flight Plan) rejected!");
-          setTimeout(() => setToastMessage(null), 4000);
-        } else {
-          alert(res.message || "Failed to reject stage.");
-        }
-      } catch (err) {
-        alert("An error occurred while verifying Flight Plan.");
-      } finally {
-        setIsRejected(false);
+  const openRejectModal = () => {
+    if (!data || data.status === "REVISION_NEEDED" || isRejected) return;
+    setRejectionReason("");
+    setIsRejectModalOpen(true);
+  };
+
+  // Eksekusi penolakan dari dalam modal
+  const confirmRejection = async () => {
+    if (!rejectionReason.trim()) {
+      alert("Fill the rejection message first");
+      return;
+    }
+
+    setIsRejected(true);
+    try {
+      const storedUserId = localStorage.getItem("userId") || currentUser?.id;
+
+      // Kirim rejectionReason ke API (sesuaikan parameter API jika backend menerima pesan)
+      const res = await rejectRawDataGate(
+        data.projectId,
+        storedUserId,
+        rejectionReason,
+      );
+
+      if (res.success) {
+        setData((prev: any) => ({ ...prev, status: "REVISION_NEEDED" }));
+        setToastMessage("Gate 7 (Digital Detection) rejected!");
+        setIsRejectModalOpen(false);
+        setTimeout(() => setToastMessage(null), 4000);
+      } else {
+        alert(res.message || "Failed to reject stage.");
       }
-    };
+    } catch (err) {
+      alert("An error occurred while verifying Digital Detection.");
+    } finally {
+      setIsRejected(false);
+    }
+  };
   // State Loading
   if (loading) {
     return (
@@ -174,7 +196,9 @@ export default function RawDataPage({
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 p-8 text-center">
         <CloudOff className="w-12 h-12 text-slate-300" />
-        <h2 className="text-lg font-bold text-slate-700">Failed to Load Data</h2>
+        <h2 className="text-lg font-bold text-slate-700">
+          Failed to Load Data
+        </h2>
         <p className="text-sm text-slate-500 max-w-sm">{error}</p>
         <Link
           href={`/dashboard/${id}`}
@@ -220,56 +244,56 @@ export default function RawDataPage({
           {currentUser?.role === "uploader" ? (
             <StatusBadge status={data.status} />
           ) : (
-              <div className="flex flex-row gap-4">
-                <button
-                  type="button"
-                  onClick={handleApproval}
-                  disabled={data.status === "APPROVED" || isApproving}
-                  className={` items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${
-                    data.status === "APPROVED" 
-                      ? "bg-emerald-50 text-emerald-700 border border-emerald-200 cursor-not-allowed"
-                      : "bg-[#004b87] hover:bg-[#003763] text-white cursor-pointer"
-                  } ${data.status === "REVISION_NEEDED" ? "hidden" : "inline-flex"}`}
-                >
-                  {isApproving ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Processing...</span>
-                    </>
-                  ) : data.status === "APPROVED" ? (
-                    <>
-                      <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                      <span>Flight Plan Verified</span>
-                    </>
-                  ) : (
-                    <span>Approve Flight Plan</span>
-                  )}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleRejection}
-                  disabled={data.status === "REVISION_NEEDED" || isRejected}
-                  className={` items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${
-                    data.status === "REVISION_NEEDED"
-                      ? "bg-red-50 text-red-700 border border-red-200 cursor-not-allowed"
-                      : "bg-red-600 hover:bg-red-500 text-white cursor-pointer"
-                  } ${data.status === "APPROVED" ? "hidden" : "inline-flex"}`}
-                >
-                  {isRejected ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Rejecting...</span>
-                    </>
-                  ) : data.status === "REVISION_NEEDED" ? (
-                    <>
-                      <XCircle className="w-4 h-4 text-red-600" />
-                      <span>Flight Plan Rejected</span>
-                    </>
-                  ) : (
-                    <span>Reject Flight Plan</span>
-                  )}
-                </button>
-              </div>
+            <div className="flex flex-row gap-4">
+              <button
+                type="button"
+                onClick={handleApproval}
+                disabled={data.status === "APPROVED" || isApproving}
+                className={` items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${
+                  data.status === "APPROVED"
+                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200 cursor-not-allowed"
+                    : "bg-[#004b87] hover:bg-[#003763] text-white cursor-pointer"
+                } ${data.status === "REVISION_NEEDED" ? "hidden" : "inline-flex"}`}
+              >
+                {isApproving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Processing...</span>
+                  </>
+                ) : data.status === "APPROVED" ? (
+                  <>
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                    <span>Raw Data Verified</span>
+                  </>
+                ) : (
+                  <span>Approve Raw Data</span>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={openRejectModal}
+                disabled={data.status === "REVISION_NEEDED" || isRejected}
+                className={` items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${
+                  data.status === "REVISION_NEEDED"
+                    ? "bg-red-50 text-red-700 border border-red-200 cursor-not-allowed"
+                    : "bg-red-600 hover:bg-red-500 text-white cursor-pointer"
+                } ${data.status === "APPROVED" ? "hidden" : "inline-flex"}`}
+              >
+                {isRejected ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Rejecting...</span>
+                  </>
+                ) : data.status === "REVISION_NEEDED" ? (
+                  <>
+                    <XCircle className="w-4 h-4 text-red-600" />
+                    <span>Raw Data Rejected</span>
+                  </>
+                ) : (
+                  <span>Reject Raw Data</span>
+                )}
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -287,9 +311,7 @@ export default function RawDataPage({
             {hasFiles ? data.formattedStorage : "–"}
           </p>
           {!hasFiles && (
-            <p className="text-[11px] text-slate-400 mt-0.5">
-              No files yet
-            </p>
+            <p className="text-[11px] text-slate-400 mt-0.5">No files yet</p>
           )}
         </div>
 
@@ -364,7 +386,8 @@ export default function RawDataPage({
             No Google Drive link connected yet
           </p>
           <p className="text-xs text-slate-400 max-w-sm">
-            Upload progress for Gate 3 with a Google Drive folder link to view files directly here.
+            Upload progress for Gate 3 with a Google Drive folder link to view
+            files directly here.
           </p>
         </div>
       )}
@@ -441,7 +464,8 @@ export default function RawDataPage({
               Raw Data Storage Folder Access
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              All raw files are stored in a structured Google Drive folder ready for processing in Gate 4.
+              All raw files are stored in a structured Google Drive folder ready
+              for processing in Gate 4.
             </p>
           </div>
 
@@ -455,6 +479,54 @@ export default function RawDataPage({
             <span>Open Raw Data Google Drive</span>
             <ExternalLink className="w-3.5 h-3.5" />
           </a>
+        </div>
+      )}
+
+      {isRejectModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
+            <h3 className="text-lg font-bold text-slate-900 mb-2">
+              Rejection Reason
+            </h3>
+            <p className="text-xs text-slate-500 mb-4">
+              Please provide feedback or the reason why Digital Detection is
+              being rejected.
+            </p>
+
+            <textarea
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+              placeholder="Enter rejection reason here..."
+              rows={4}
+              className="w-full text-sm p-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-red-500 resize-none"
+            />
+
+            <div className="flex justify-end gap-3 mt-5">
+              <button
+                type="button"
+                onClick={() => setIsRejectModalOpen(false)}
+                disabled={isRejected}
+                className="px-4 py-2 text-xs font-semibold rounded-xl text-slate-600 hover:bg-slate-100 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmRejection}
+                disabled={isRejected || !rejectionReason.trim()}
+                className="flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl text-white bg-red-600 hover:bg-red-500 disabled:opacity-50 transition-colors shadow-sm"
+              >
+                {isRejected ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Submitting...</span>
+                  </>
+                ) : (
+                  <span>Submit Rejection</span>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

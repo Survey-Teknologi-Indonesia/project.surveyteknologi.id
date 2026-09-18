@@ -399,6 +399,7 @@ export async function approveDigitalDetectionGate(
 export async function rejectDigitalDetectionGate(
   projectId: string,
   rejectorId?: string,
+  reason?: string,
 ): Promise<{ success: boolean; message?: string }> {
   const client = await pool.connect();
 
@@ -444,7 +445,7 @@ export async function rejectDigitalDetectionGate(
       `INSERT INTO rejection ("rejectBy", date, remarks)
        VALUES ($1, CURRENT_DATE, $2)
        RETURNING rejection_id`,
-      [validUserId, "Rejected via Flight Plan Dashboard"]
+      [validUserId, reason]
     );
 
     const newRejectionId = rejectionRes.rows[0].rejection_id;
